@@ -1,0 +1,68 @@
+extends layout
+
+block content
+  .container-fluid.mt-4
+    .row.justify-content-center
+      .col-lg-10
+        .help-section
+          h4.mb-3
+            i.bi.bi-question-circle.me-2
+            | Modern RSS Monitor – Help & Features
+          ul.fs-5
+            li.mb-2
+              b Add/Edit/Remove Feeds:
+              |  Easily manage your RSS/Atom feeds with a modern interface.
+            li.mb-2
+              b Integrations:
+              |  Connect Discord, Slack, Telegram, Email, and more.
+            li.mb-2
+              b Field Selection & Filtering:
+              |  Choose which article fields to send, and filter by keywords.
+            li.mb-2
+              b Action Icons:
+              |  Edit, Pause, Resume, and Delete feeds with intuitive icons and tooltips.
+            li.mb-2
+              b Quick Search:
+              |  Instantly filter feeds by name or URL.
+            li.mb-2
+              b Article History & Log:
+              |  See what was sent, when, and to which integration.
+            li.mb-2
+              b Per-Feed Scan Now:
+              |  Scan a single feed instantly.
+            li.mb-2
+              b Feed Health:
+              |  Get notified if a feed is broken or hasn’t updated.
+            li.mb-2
+              b Undo for Deletes:
+              |  Accidentally deleted a feed? Undo with a click!
+            li.mb-2
+              b Custom Notification Templates:
+              |  Advanced users can customize notification formatting.
+            li.mb-2
+              b Collapsible Feed Rows:
+              |  Expand a feed to preview recent articles inline.
+            li.mb-2
+              b Integration Test/Status:
+              |  Test and see the status of all integrations.
+            li.mb-2
+              b Light/Dark Mode, Compact Sidebar, and More:
+              |  Personalize your experience in Settings.
+          hr
+          h4.mb-2
+            i.bi.bi-terminal.me-2
+            | Testing Local RSS Feeds
+          p.mb-2
+            | To test a local XML file:
+          ol
+            li Save your XML file (e.g. 
+              code testfeed.xml
+              | ) to a folder.
+            li Open a terminal/command prompt and run:
+              pre.mb-2
+                code python -m http.server 8000
+            li Use the URL 
+              code http://localhost:8000/testfeed.xml
+              |  in the app’s Feed URL field.
+          p.text-muted.mt-3
+            | If you need to upload a feed, contact your administrator or use a public pastebin.

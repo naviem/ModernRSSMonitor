@@ -1,0 +1,142 @@
+extends layout
+
+block content
+  div(class="max-w-4xl mx-auto")
+    h1(class="text-3xl font-bold flex items-center gap-3 mb-8")
+      svg(xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor")
+        path(stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z")
+        path(stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z")
+      | Settings
+
+    // Log Level Settings
+    div(class="card bg-base-100 shadow-lg mb-8")
+      div(class="card-body")
+        h2(class="card-title flex gap-2 mb-6")
+          svg(xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor")
+            path(stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z")
+          | Logging
+        
+        div(class="form-control")
+          label(class="label")
+            span(class="label-text font-medium") Log Level
+            span(class="label-text-alt opacity-75") Controls the verbosity of console output
+          select(class="select select-bordered w-full" id="log-level")
+            option(value="error" selected=currentLogLevel === 'error') Error - Only critical issues
+            option(value="warn" selected=currentLogLevel === 'warn') Warning - Important issues
+            option(value="info" selected=currentLogLevel === 'info') Info - General information
+            option(value="debug" selected=currentLogLevel === 'debug') Debug - Detailed information
+            option(value="trace" selected=currentLogLevel === 'trace') Trace - Most verbose output
+
+    // General Settings
+    div(class="card bg-base-100 shadow-lg mb-8")
+      div(class="card-body")
+        h2(class="card-title flex gap-2 mb-6")
+          svg(xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor")
+            path(stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4")
+          | General Settings
+        
+        div(class="space-y-4")
+          div(class="form-control")
+            label(class="label font-medium") Default Scan Interval
+            div(class="join")
+              input#default-interval(type="number" class="join-item input input-bordered w-24" value=defaultInterval min="1")
+              span(class="join-item btn btn-neutral") Minutes
+
+          div(class="form-control")
+            label(class="label font-medium") Theme
+            select#theme(class="select select-bordered w-full")
+              option(value="light" selected=theme==='light') Light Theme
+              option(value="dark" selected=theme==='dark') Dark Theme
+              option(value="cupcake" selected=theme==='cupcake') Cupcake
+              option(value="cyberpunk" selected=theme==='cyberpunk') Cyberpunk
+              option(value="synthwave" selected=theme==='synthwave') Synthwave
+              option(value="retro" selected=theme==='retro') Retro
+              option(value="forest" selected=theme==='forest') Forest
+
+    // Notification Settings
+    div(class="card bg-base-100 shadow-lg mb-8")
+      div(class="card-body")
+        h2(class="card-title flex gap-2 mb-6")
+          svg(xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor")
+            path(stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9")
+          | Notifications
+        
+        div(class="space-y-4")
+          div(class="form-control")
+            label(class="label cursor-pointer justify-start gap-4")
+              input#desktop-notifications(type="checkbox" class="toggle toggle-primary" checked=desktopNotifications)
+              span(class="label-text font-medium") Enable Desktop Notifications
+
+    div(class="flex justify-end gap-4 mt-8")
+      button#save-settings(class="btn btn-primary") Save Changes
+
+    // Toast Container
+    div(class="toast toast-end z-50" id="toast")
+
+block scripts
+  script.
+    document.getElementById('save-settings').addEventListener('click', async () => {
+      const data = {
+        defaultInterval: parseInt(document.getElementById('default-interval').value),
+        theme: document.getElementById('theme').value,
+        desktopNotifications: document.getElementById('desktop-notifications').checked,
+        logLevel: document.getElementById('log-level').value
+      };
+
+      try {
+        const response = await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        if (!response.ok) throw new Error('Failed to save settings');
+
+        // Update theme immediately
+        document.documentElement.setAttribute('data-theme', data.theme);
+        localStorage.setItem('theme', data.theme);
+
+        // Show success message
+        showToast('Settings saved successfully', 'success');
+
+        // Request notification permission if enabled
+        if (data.desktopNotifications && Notification.permission !== 'granted') {
+          await Notification.requestPermission();
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    // Update log level
+    document.getElementById('log-level').addEventListener('change', async (e) => {
+      try {
+        const response = await fetch('/api/settings/log-level', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ level: e.target.value })
+        });
+
+        if (!response.ok) throw new Error('Failed to update log level');
+        showToast('Log level updated successfully', 'success');
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+    
+    // Update default interval in localStorage
+    document.getElementById('default-interval').addEventListener('change', function() {
+      const value = Math.max(1, parseInt(this.value) || 5);
+      localStorage.setItem('defaultScanInterval', value);
+    });
+
+    function showToast(message, type = 'info') {
+      const toast = document.getElementById('toast');
+      const bgColor = type === 'error' ? 'alert-error' : type === 'success' ? 'alert-success' : 'alert-info';
+      toast.innerHTML = `
+        <div class="alert ${bgColor} shadow-lg">
+          <span class="text-content">${message}</span>
+        </div>
+      `;
+      setTimeout(() => toast.innerHTML = '', 3000);
+    }

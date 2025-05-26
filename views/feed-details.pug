@@ -1,0 +1,153 @@
+extends layout
+
+block content
+  .container-xl.mt-4
+    .row.g-4
+      .col-12
+        .row.g-4
+          .col-md-6.col-lg-3
+            .card.h-100.border-primary
+              .card-body
+                h6.card-subtitle.mb-2.text-muted Uptime (7 days)
+                .d-flex.align-items-center
+                  .flex-shrink-0
+                    i.bi.bi-heart-pulse.fs-2.text-primary
+                  .flex-grow-1.ms-3
+                    h2.mb-0 #{stats.uptime}%
+                    small.text-muted Uptime
+          .col-md-6.col-lg-3
+            .card.h-100.border-success
+              .card-body
+                h6.card-subtitle.mb-2.text-muted New Articles (24h)
+                .d-flex.align-items-center
+                  .flex-shrink-0
+                    i.bi.bi-activity.fs-2.text-success
+                  .flex-grow-1.ms-3
+                    h2.mb-0 #{stats.articles24h}
+                    small.text-muted New Articles (24h)
+          .col-md-6.col-lg-3
+            .card.h-100.border-danger
+              .card-body
+                h6.card-subtitle.mb-2.text-muted Errors (24h)
+                .d-flex.align-items-center
+                  .flex-shrink-0
+                    i.bi.bi-bug.fs-2.text-danger
+                  .flex-grow-1.ms-3
+                    h2.mb-0 #{stats.errors24h}
+                    small.text-muted Errors (24h)
+          .col-md-6.col-lg-3
+            .card.h-100.border-info
+              .card-body
+                h6.card-subtitle.mb-2.text-muted Avg Scan Duration
+                .d-flex.align-items-center
+                  .flex-shrink-0
+                    i.bi.bi-clock-history.fs-2.text-info
+                  .flex-grow-1.ms-3
+                    h2.mb-0 #{stats.avgScanDuration} ms
+                    small.text-muted Avg Duration
+
+    .row.g-4.mt-2
+      .col-lg-8
+        h1.mb-0= feed.title
+        span.badge.rounded-pill.ms-3(class=feed.is_paused ? 'bg-warning' : 'bg-success')
+          i.bi(class=feed.is_paused ? 'bi-pause' : 'bi-check-circle')
+          |  #{feed.is_paused ? 'Paused' : 'Active'}
+        button.btn.btn-outline-secondary.ms-3(
+          type="button"
+          onclick=`window.loadEditFeedData(${feed.id})`
+        )
+          i.bi.bi-pencil
+          |  Edit Feed
+
+        h4.mt-4.mb-3.text-secondary Recent Logs
+        if logs && logs.length
+          table.table.table-striped.mt-2
+            thead
+              tr
+                th Timestamp
+                th Level
+                th Message
+            tbody
+              each log in logs
+                tr
+                  td= new Date(log.timestamp).toLocaleString()
+                  td
+                    if log.level === 'error'
+                      span.badge.bg-danger= log.level
+                    else if log.level === 'info'
+                      span.badge.bg-success= log.level
+                    else
+                      span.badge.bg-secondary= log.level
+                  td= log.message
+        else
+          p.text-muted No logs yet for this feed.
+
+      .col-lg-4
+        .card.mb-4
+          .card-header Quick Actions
+          .card-body
+            .d-grid.gap-2
+              button.btn.btn-outline-primary(type="button" onclick=`scanFeed(${feed.id})`)
+                i.bi.bi-arrow-repeat.me-2
+                | Scan Now
+              button.btn.btn-outline-secondary(type="button" onclick=`togglePause(${feed.id})`)
+                i.bi.bi-pause-circle.me-2
+                | #{feed.is_paused ? 'Resume' : 'Pause'}
+              button.btn.btn-outline-danger(type="button" onclick=`deleteFeed(${feed.id})`)
+                i.bi.bi-trash.me-2
+                | Delete Feed
+        .card
+          .card-header Feed Info
+          .card-body
+            ul.list-unstyled.mb-0
+              li
+                strong Scan Interval: 
+                | #{feed.interval} min
+              li
+                strong Last Checked: 
+                | #{feed.last_checked ? new Date(feed.last_checked).toLocaleString() : 'Never'}
+              li
+                strong Status: 
+                span.badge(class=feed.is_paused ? 'bg-warning' : 'bg-success')
+                  | #{feed.is_paused ? 'Paused' : 'Active'}
+
+block scripts
+  script.
+    window.allFeeds = [!{JSON.stringify(feed)}];
+    window.allConnections = !{JSON.stringify(connections)};
+    function showToast(message) {
+      const toastBody = document.getElementById('toastBody');
+      if (toastBody) toastBody.textContent = message;
+      const toastEl = document.getElementById('liveToast');
+      if (toastEl) {
+        const toast = bootstrap.Toast.getOrCreateInstance(toastEl);
+        toast.show();
+      }
+    }
+    function scanFeed(id) {
+      fetch(`/api/feeds/${id}/scan-now`, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => showToast(data.success ? "Scan started!" : "Scan failed."));
+    }
+    function togglePause(id) {
+      fetch(`/api/feeds/${id}/pause`, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+          showToast(data.is_paused ? "Feed paused." : "Feed resumed.");
+          setTimeout(() => location.reload(), 800);
+        });
+    }
+    function deleteFeed(id) {
+      if (!confirm("Delete this feed?")) return;
+      fetch(`/api/feeds/${id}`, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) window.location = "/";
+          else showToast("Delete failed.");
+        });
+    }
+    function openEditFeedModal(id) {
+      window.editFeed(id);
+    }
+  script(src="/js/feeds.js")
+  script(src="/js/editFeed.js")

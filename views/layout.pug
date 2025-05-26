@@ -1,0 +1,120 @@
+doctype html
+html(lang="en" data-theme=theme || 'light')
+  head
+    meta(charset="UTF-8")
+    meta(name="viewport" content="width=device-width, initial-scale=1.0")
+    title Modern RSS Monitor
+    link(href="https://cdn.jsdelivr.net/npm/daisyui@3.0.0/dist/full.css" rel="stylesheet")
+    link(href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2/dist/tailwind.min.css" rel="stylesheet")
+    link(rel="stylesheet" href="/css/output.css")
+    script(src="/socket.io/socket.io.js")
+    script(src="/js/app.js" defer)
+  
+  body(class="min-h-screen bg-base-100")
+    // Banner
+    div(class="relative overflow-hidden bg-gradient-to-r from-primary/5 via-primary/10 to-secondary/5")
+      div(class="absolute inset-0 bg-grid-pattern opacity-10")
+      div(class="absolute inset-0 bg-gradient-to-b from-transparent to-base-100/80")
+      div(class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 relative")
+        div(class="flex flex-col md:flex-row justify-between items-center gap-6")
+          div(class="flex items-center gap-4")
+            div(class="p-3 bg-primary/10 rounded-lg shadow-lg backdrop-blur-sm")
+              svg(xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor")
+                path(stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 5c7.18 0 13 5.82 13 13M6 11a7 7 0 017 7m-6 0a1 1 0 11-2 0 1 1 0 012 0z")
+            div
+              h1(class="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent") Modern RSS Monitor
+              p(class="text-base-content/70 mt-1 flex items-center gap-2")
+                span Created by Naveed M
+                span(class="text-xs px-2 py-1 rounded-full bg-secondary/10 text-secondary") v1.0.0
+          div(class="flex items-center gap-4 backdrop-blur-sm bg-base-100/30 p-3 rounded-lg shadow-lg")
+            select#theme-select(class="select select-bordered select-sm min-w-[150px]" onchange="changeTheme(this.value)")
+              option(value="light" selected=theme==='light') Light Theme
+              option(value="dark" selected=theme==='dark') Dark Theme
+              option(value="cupcake" selected=theme==='cupcake') Cupcake
+              option(value="cyberpunk" selected=theme==='cyberpunk') Cyberpunk
+              option(value="synthwave" selected=theme==='synthwave') Synthwave
+              option(value="retro" selected=theme==='retro') Retro
+              option(value="forest" selected=theme==='forest') Forest
+
+    // Navigation
+    div(class="navbar bg-base-200 shadow-lg mb-8")
+      div(class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full")
+        div(class="flex-1")
+          a(href="/" class="btn btn-ghost normal-case text-xl") Home
+        div(class="flex-none")
+          ul(class="menu menu-horizontal px-1")
+            li
+              a(href="/integrations" class=currentPage === 'integrations' ? 'active' : '') Integrations
+            li
+              a(href="/settings" class=currentPage === 'settings' ? 'active' : '') Settings
+            li
+              a(href="/help" class=currentPage === 'help' ? 'active' : '') Help
+
+    // Main Content
+    main(class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8")
+      block content
+
+    // Toast Container
+    div(class="toast toast-end z-50" id="toast")
+
+    // Base Scripts
+    script.
+      // Add grid pattern to banner background
+      const style = document.createElement('style');
+      style.textContent = `
+        .bg-grid-pattern {
+          background-image: linear-gradient(to right, rgba(255,255,255,.1) 1px, transparent 1px),
+                          linear-gradient(to bottom, rgba(255,255,255,.1) 1px, transparent 1px);
+          background-size: 20px 20px;
+        }
+      `;
+      document.head.appendChild(style);
+
+      function changeTheme(theme) {
+        localStorage.setItem('theme', theme);
+        fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ theme })
+        }).then(() => {
+          document.documentElement.setAttribute('data-theme', theme);
+        });
+      }
+
+      // Load theme from localStorage on page load
+      document.addEventListener('DOMContentLoaded', () => {
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) {
+          document.documentElement.setAttribute('data-theme', savedTheme);
+          document.getElementById('theme-select').value = savedTheme;
+        }
+      });
+
+      function showToast(message, type = 'info') {
+        const toast = document.getElementById('toast');
+        const bgColor = type === 'error' ? 'alert-error' : type === 'success' ? 'alert-success' : 'alert-info';
+        toast.innerHTML = `
+          <div class="alert ${bgColor} shadow-lg">
+            <span class="text-content">${message}</span>
+          </div>
+        `;
+        setTimeout(() => toast.innerHTML = '', 3000);
+      }
+
+      // Enable desktop notifications if permitted
+      if ('Notification' in window) {
+        const notificationToggle = document.getElementById('desktop-notifications');
+        if (notificationToggle) {
+          notificationToggle.addEventListener('change', async () => {
+            if (notificationToggle.checked) {
+              const permission = await Notification.requestPermission();
+              if (permission !== 'granted') {
+                notificationToggle.checked = false;
+              }
+            }
+          });
+        }
+      }
+
+    // Page-specific Scripts
+    block scripts

@@ -1,0 +1,100 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-base-100 text-base-content;
+  }
+}
+
+@layer components {
+  .card-feed {
+    @apply card bg-base-100 shadow-lg hover:shadow-xl transition-shadow duration-300;
+  }
+  
+  .custom-button {
+    @apply btn normal-case;
+  }
+  
+  .feed-title {
+    @apply text-lg font-semibold text-primary hover:text-primary-focus transition-colors;
+  }
+  
+  .feed-description {
+    @apply text-sm text-base-content/80;
+  }
+  
+  .navbar-menu {
+    @apply menu bg-base-200 w-56 rounded-box;
+  }
+  
+  .settings-section {
+    @apply card bg-base-200 p-6 shadow-md;
+  }
+  
+  .form-control {
+    @apply flex flex-col gap-2;
+  }
+  
+  .input-field {
+    @apply input input-bordered w-full;
+  }
+  
+  .select-field {
+    @apply select select-bordered w-full;
+  }
+}
+
+/* Custom styles */
+.toast {
+  animation: slide-up 0.3s ease-out;
+}
+
+.toast-info {
+  @apply bg-info text-info-content;
+}
+
+.toast-success {
+  @apply bg-success text-success-content;
+}
+
+.toast-error {
+  @apply bg-error text-error-content;
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-base-200 rounded-full;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-base-300 rounded-full hover:bg-base-content/20;
+}
+
+/* Card hover effect */
+.card {
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+} 

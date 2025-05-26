@@ -1,0 +1,1563 @@
+dialog(class="modal" id="edit-feed-modal")
+  div(class="toast toast-top toast-center z-[1000]" id="toast-container")
+
+  div(class="modal-box max-w-4xl")
+    div(class="flex items-center justify-between mb-6")
+      h3(class="font-bold text-2xl") Edit Feed
+      button(class="btn btn-circle btn-ghost" onclick="document.getElementById('edit-feed-modal').close()")
+        svg(xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor")
+          path(stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12")
+
+    form(id="edit-feed-form")
+      div(class="grid grid-cols-1 lg:grid-cols-2 gap-8")
+        // Left Column - Feed Settings
+        div(class="space-y-6")
+          div
+            div(class="bg-base-200 rounded-lg p-3")
+              h4(class="font-medium text-gray-200") Feed Settings
+            div(class="p-4 mt-2 bg-base-200 rounded-lg")
+              input(type="hidden" name="id" id="edit-feed-id")
+              div(class="form-control")
+                label(class="label font-medium") Feed Title
+                input(class="input input-bordered w-full" type="text" name="title" id="edit-feed-title" required)
+              
+              div(class="form-control")
+                label(class="label font-medium") Feed URL
+                input(class="input input-bordered w-full font-mono text-sm" type="url" name="url" id="edit-feed-url" required)
+              
+              div(id="fields-container" class="space-y-2 mt-4")
+
+              div(class="form-control")
+                label(class="label font-medium") Scan Interval
+                div(class="join w-full")
+                  input(class="join-item input input-bordered w-24" type="number" name="interval" id="edit-feed-interval" min="1" required)
+                  span(class="join-item btn btn-neutral") Minutes
+
+          div(class="mt-6")
+            div(class="bg-base-200 rounded-lg p-3")
+              h4(class="font-medium text-gray-200") Notification Settings
+
+            div(class="p-4 mt-2 bg-base-200 rounded-lg")
+              div(class="space-y-4")
+                  // Integration Tab Selectors
+                  div(class="form-control")
+                    label(class="label text-sm font-medium") Select Service
+                    div(class="flex flex-wrap gap-2 mb-4" id="service-tab-selectors")
+                      each serviceName in ['Discord', 'Telegram', 'Slack', 'Email']
+                        button(type="button" class="btn btn-sm service-tab-button" data-service-tab=serviceName.toLowerCase()) #{serviceName}
+
+                  // Service Settings Panels (Tabs) Container
+                  div(id="service-settings-panels")
+                    // Discord Settings Panel
+                    div(id="discord-settings-panel" class="service-panel space-y-4 hidden" data-service-type="discord")
+                      div(class="form-control")
+                        label(class="label cursor-pointer justify-start gap-3")
+                          input(type="checkbox" class="toggle toggle-success service-enable-toggle" data-service-name="discord" id="enable-discord-service")
+                          span(class="label-text font-medium") Enable Discord Notifications
+                      div(class="service-config-area hidden")
+                        if false
+                          // This div will contain all discord specific settings (comment now inside an unrendered block)
+                        div(class="form-control")
+                          label(class="label text-sm") Use Existing Integration
+                          select(class="select select-bordered w-full integration-select" id="discord-integration-select" data-service-select="discord")
+                            option(value="") Custom Configuration
+                            each conn in connections.filter(c => c.service === 'discord')
+                              option(value=conn.id)= conn.label
+                        div(class="custom-settings-area" id="discord-custom-settings")
+                          div(class="form-control")
+                            label(class="label text-sm") Webhook URL
+                            input(class="input input-bordered w-full font-mono text-sm" type="text" name="discord_webhook_url")
+                          div(class="form-control")
+                            label(class="label text-sm") Username
+                            input(class="input input-bordered w-full" type="text" name="discord_username" placeholder="RSS Monitor")
+                          div(class="form-control")
+                            label(class="label text-sm") Avatar URL
+                            input(class="input input-bordered w-full" type="text" name="discord_avatar" placeholder="https://example.com/avatar.png")
+                        div(class="form-control mt-4")
+                          label(class="label cursor-pointer justify-start gap-3")
+                            input(type="checkbox" class="toggle toggle-primary" id="discord-use-embeds")
+                            span(class="label-text font-medium") Use Rich Embeds
+                        div(id="discord-embed-settings" class="mt-2 w-full" style="display: none;")
+                          div(class="rounded-lg p-3" style="background-color: #20252E;")
+                            div(class="flex items-center justify-between")
+                              h5(class="font-medium text-gray-200") Embed Settings
+                              div(class="flex gap-2")
+                                button(type="button" class="btn btn-sm btn-info" onclick="testEmbed()") TEST
+                                button(type="button" class="btn btn-sm btn-primary" onclick="window.addEmbed(event)") ADD EMBED
+                          div(class="px-0 py-4 mt-2 space-y-4")
+                            div(id="embed-tabs" class="flex text-sm gap-2 hidden flex-wrap max-w-full")
+                            div(id="discord-embeds-container" class="space-y-4")
+                              div(class="embed-template hidden")
+                                div(class="embed-content bg-base-300 rounded-lg p-4 mt-6")
+                                  div(class="space-y-4")
+                                    div(class="grid grid-cols-2 gap-4")
+                                      div
+                                        label(class="block text-sm opacity-90 mb-2") Author
+                                        input(class="input input-bordered w-full bg-base-100" type="text" name="embed_author" placeholder="${author}")
+                                      div
+                                        label(class="block text-sm opacity-90 mb-2") Title
+                                        input(class="input input-bordered w-full bg-base-100" type="text" name="embed_title" placeholder="${title}")
+                                    div
+                                      label(class="block text-sm opacity-90 mb-2") Description
+                                      textarea(class="textarea textarea-bordered w-full h-24 bg-base-100" name="embed_description" placeholder="${description}")
+                                    div(class="grid grid-cols-3 gap-4")
+                                      div
+                                        label(class="block text-sm opacity-90 mb-2") URL
+                                        input(class="input input-bordered w-full bg-base-100" type="text" name="embed_url" placeholder="${link}")
+                                      div
+                                        label(class="block text-sm opacity-90 mb-2") Color
+                                        input(class="input input-bordered w-full bg-base-100 h-[2.5rem]" type="color" name="embed_color" value="#5865F2")
+                                      div
+                                        label(class="block text-sm opacity-90 mb-2") Footer
+                                        input(class="input input-bordered w-full bg-base-100" type="text" name="embed_footer" placeholder="Published on ${pubDate}")
+                                    div(class="grid grid-cols-2 gap-4")
+                                      div
+                                        label(class="block text-sm opacity-90 mb-2") Thumbnail URL
+                                        input(class="input input-bordered w-full bg-base-100" type="text" name="embed_thumbnail" placeholder="${thumbnail}")
+                                      div
+                                        label(class="block text-sm opacity-90 mb-2") Image URL
+                                        input(class="input input-bordered w-full bg-base-100" type="text" name="embed_image" placeholder="${image}")
+
+                    // Telegram Settings Panel
+                    div(id="telegram-settings-panel" class="service-panel space-y-4 hidden" data-service-type="telegram")
+                      div(class="form-control")
+                        label(class="label cursor-pointer justify-start gap-3")
+                          input(type="checkbox" class="toggle toggle-success service-enable-toggle" data-service-name="telegram" id="enable-telegram-service")
+                          span(class="label-text font-medium") Enable Telegram Notifications
+                      div(class="service-config-area hidden")
+                        div(class="form-control")
+                          label(class="label text-sm") Use Existing Integration
+                          select(class="select select-bordered w-full integration-select" id="telegram-integration-select" data-service-select="telegram")
+                            option(value="") Custom Configuration
+                            each conn in connections.filter(c => c.service === 'telegram')
+                              option(value=conn.id)= conn.label
+                        div(class="custom-settings-area" id="telegram-custom-settings")
+                          div(class="form-control")
+                            label(class="label text-sm") Bot Token
+                            input(class="input input-bordered w-full font-mono text-sm" type="text" name="telegram_token")
+                          div(class="form-control")
+                            label(class="label text-sm") Chat ID
+                            input(class="input input-bordered w-full" type="text" name="telegram_chat_id")
+
+                    // Slack Settings Panel
+                    div(id="slack-settings-panel" class="service-panel space-y-4 hidden" data-service-type="slack")
+                      div(class="form-control")
+                        label(class="label cursor-pointer justify-start gap-3")
+                          input(type="checkbox" class="toggle toggle-success service-enable-toggle" data-service-name="slack" id="enable-slack-service")
+                          span(class="label-text font-medium") Enable Slack Notifications
+                      div(class="service-config-area hidden")
+                        div(class="form-control")
+                          label(class="label text-sm") Use Existing Integration
+                          select(class="select select-bordered w-full integration-select" id="slack-integration-select" data-service-select="slack")
+                            option(value="") Custom Configuration
+                            each conn in connections.filter(c => c.service === 'slack')
+                              option(value=conn.id)= conn.label
+                        div(class="custom-settings-area" id="slack-custom-settings")
+                          div(class="form-control")
+                            label(class="label text-sm") Webhook URL
+                            input(class="input input-bordered w-full font-mono text-sm" type="text" name="slack_webhook_url")
+                    
+                    // Email Settings Panel
+                    div(id="email-settings-panel" class="service-panel space-y-4 hidden" data-service-type="email")
+                      div(class="form-control")
+                        label(class="label cursor-pointer justify-start gap-3")
+                          input(type="checkbox" class="toggle toggle-success service-enable-toggle" data-service-name="email" id="enable-email-service")
+                          span(class="label-text font-medium") Enable Email Notifications
+                      div(class="service-config-area hidden")
+                        div(class="form-control")
+                          label(class="label text-sm") Use Existing Integration
+                          select(class="select select-bordered w-full integration-select" id="email-integration-select" data-service-select="email")
+                            option(value="") Custom Configuration
+                            each conn in connections.filter(c => c.service === 'email')
+                              option(value=conn.id)= conn.label
+                        div(class="custom-settings-area" id="email-custom-settings")
+                          div(class="form-control")
+                            label(class="label text-sm") Email Address
+                            input(class="input input-bordered w-full" type="email" name="email_address")
+
+          div(class="mt-6")
+            div(class="bg-base-200 rounded-lg p-3")
+              div(class="flex items-center gap-2")
+                h4(class="font-medium text-gray-200") Filter Settings
+                div(class="tooltip tooltip-right" data-tip="Filters allow you to control which articles trigger notifications. Use regex patterns to match article titles or content. For example, '.*important.*' matches if 'important' appears anywhere in the text.")
+                  i(class="bi bi-question-circle text-gray-400")
+
+            div(class="p-4 mt-2 bg-base-200 rounded-lg")
+              div(class="space-y-3")
+                  div(class="form-control")
+                    label(class="label")
+                      span(class="text-sm flex items-center gap-2") 
+                        | Title Filter (Regex)
+                        div(class="tooltip tooltip-right" data-tip="Example: .*breaking news.* - Matches articles with 'breaking news' in the title")
+                          i(class="bi bi-info-circle text-gray-400")
+                  input(class="input input-bordered w-full font-mono text-sm" type="text" name="title_filter" id="edit-feed-title-filter" placeholder="e.g. .*important.*")
+                
+                  div(class="form-control")
+                    label(class="label")
+                      span(class="text-sm flex items-center gap-2") 
+                        | Content Filter (Regex)
+                        div(class="tooltip tooltip-right" data-tip="Example: (?!.*spam).* - Excludes articles containing 'spam' in the content")
+                          i(class="bi bi-info-circle text-gray-400")
+                  input(class="input input-bordered w-full font-mono text-sm" type="text" name="content_filter" id="edit-feed-content-filter" placeholder="e.g. .*breaking news.*")
+                
+                  div(class="form-control")
+                    label(class="label cursor-pointer justify-start gap-3")
+                      input(type="checkbox" class="toggle toggle-primary" name="filter_mode_any" id="edit-feed-filter-mode")
+                      span Match Any Filter (OR)
+
+        // Right Column - Live Preview & Testing
+        div(class="space-y-6")
+          div
+            div(class="bg-base-200 rounded-lg p-3")
+              h4(class="font-medium text-gray-200") Preview Settings
+
+            div(class="p-4 mt-2 bg-base-200 rounded-lg")
+              div(class="form-control")
+                label(class="label cursor-pointer")
+                  span(class="label-text font-medium") Show Live Preview
+                  input(type="checkbox" class="toggle toggle-success" id="show-live-preview")
+              div(class="form-control")
+                label(class="label cursor-pointer")
+                  span(class="label-text font-medium") Show Recent Articles
+                  input(type="checkbox" class="toggle toggle-success" id="show-recent-articles")
+              div(class="form-control")
+                label(class="label cursor-pointer")
+                  span(class="label-text font-medium") Show Discord Preview
+                  input(type="checkbox" class="toggle toggle-success" id="show-discord-preview")
+
+          // Live Preview Container
+          div(class="hidden" id="live-preview-section")
+            div(class="bg-base-200 rounded-lg p-4 mb-4")
+              h4(class="font-bold text-lg mb-4") Live Preview
+              div(class="flex flex-wrap gap-2 mb-4")
+                button(class="btn btn-sm btn-outline" type="button" onclick="detectFields()")
+                  i(class="bi bi-search me-1")
+                  | DETECT FIELDS
+                button(class="btn btn-sm btn-ghost" onclick="refreshPreview()")
+                  svg(xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 me-1" fill="none" viewBox="0 0 24 24" stroke="currentColor")
+                    path(stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15")
+                  | REFRESH
+                button(class="btn btn-sm btn-primary" onclick="event.preventDefault(); testNotification()")
+                  svg(xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 me-1" fill="none" viewBox="0 0 24 24" stroke="currentColor")
+                    path(stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9")
+                  | TEST
+
+              // Field Selection
+              div(class="field-selection bg-base-300 rounded-lg p-4 mb-4 hidden")
+                h4(class="font-medium mb-3") Available Fields
+                div(class="grid grid-cols-2 gap-2" id="field-checkboxes")
+              
+              // Preview Content
+              div(class="space-y-4" id="preview-container")
+                div(class="animate-pulse")
+                  div(class="h-4 bg-base-300 rounded w-3/4")
+                  div(class="space-y-3 mt-4")
+                    div(class="h-4 bg-base-300 rounded")
+                    div(class="h-4 bg-base-300 rounded w-5/6")
+
+          // Recent Articles Section
+          div(class="hidden" id="recent-articles-section")
+            div(class="bg-base-200 rounded-lg p-4")
+              div(class="flex items-center justify-between mb-4")
+                h4(class="font-bold text-lg") Recent Articles
+                div(class="flex gap-2")
+                  button(class="btn btn-sm btn-ghost gap-2" onclick="refreshArticles()")
+                    svg(xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor")
+                      path(stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15")
+                    | Refresh
+            
+              div(class="space-y-3 max-h-96 overflow-y-auto" id="articles-container")
+                div(class="animate-pulse")
+                  div(class="space-y-3")
+                    each i in [1,2,3]
+                      div(class="h-16 bg-base-300 rounded")
+
+          // Discord Preview Section
+          div(class="hidden" id="discord-preview-section")
+            div(class="bg-base-200 rounded-lg p-4 text-base-content")
+              h4(class="font-bold text-lg mb-4 text-white") Discord Preview
+              div(class="space-y-4" id="discord-preview")
+                div(class="flex items-start gap-3")
+                  img(src="https://cdn.discordapp.com/embed/avatars/0.png" class="w-10 h-10 rounded-full" id="discord-preview-avatar")
+                  div(class="flex-1")
+                    div(class="font-medium" id="discord-preview-username") RSS Monitor
+                    div(class="mt-2 bg-[#2f3136] rounded-lg overflow-hidden")
+                      div(class="border-l-4 border-[#5865F2] pl-3 py-2 pr-3")
+                        div(class="font-medium text-sm" id="discord-preview-title") ${title}
+                        div(class="text-sm opacity-90 mt-1" id="discord-preview-description") ${description}
+                        div(class="text-xs opacity-70 mt-2" id="discord-preview-footer") Published on ${pubDate}
+
+      // Modal action buttons at the bottom
+      div(class="mt-8 flex justify-end gap-2")
+        button(class="btn" type="button" onclick="document.getElementById('edit-feed-modal').close()") Cancel
+        button(class="btn btn-primary" type="submit") Save Changes
+
+script.
+  console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+  console.log('[MODAL PUG SCRIPT BLOCK] This script block in _edit-feed-modal.pug IS RUNNING - Version Y');
+  console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
+
+  let currentFeed = null;
+  let embedCounter = 0;
+  let activeServiceTab = 'discord'; // Default active tab
+  let modalSocketInstance = null;
+
+  // Function for app.js to call to set the socket instance for this modal
+  window.setModalSocketReference = function(socket) {
+    console.log('[MODAL SCRIPT] window.setModalSocketReference called.', socket);
+    modalSocketInstance = socket;
+    if (modalSocketInstance) {
+      console.log('[MODAL SCRIPT] modalSocketInstance is NOW SET. Connected:', modalSocketInstance.connected);
+    } else {
+      console.warn('[MODAL SCRIPT] Attempted to set modalSocketInstance, but provided socket was null/undefined.');
+    }
+  };
+
+  // Debug function
+  function debug(msg, data) {
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] [DEBUG] ${msg}:`, data);
+  }
+
+  function collectEmbedSettings() {
+    const embeds = [];
+    const embedContainer = document.getElementById('discord-embeds-container');
+    if (!embedContainer) return { enabled: document.getElementById('discord-use-embeds')?.checked || false, embeds: [] };
+
+    const embedShells = embedContainer.querySelectorAll(':scope > div:not(.embed-template)'); // Corrected selector for shells
+    let hasAnyContentInAnyEmbed = false;
+
+    embedShells.forEach(shell => { // Iterate over shells
+      const embedData = {
+        title: shell.querySelector('[name="embed_title"]')?.value || '', // Query within the shell
+        description: shell.querySelector('[name="embed_description"]')?.value || '',
+        url: shell.querySelector('[name="embed_url"]')?.value || '',
+        color: shell.querySelector('[name="embed_color"]')?.value || '#5865F2',
+        author: shell.querySelector('[name="embed_author"]')?.value || '',
+        footer: shell.querySelector('[name="embed_footer"]')?.value || '',
+        thumbnail: shell.querySelector('[name="embed_thumbnail"]')?.value || '',
+        image: shell.querySelector('[name="embed_image"]')?.value || ''
+      };
+
+      if (typeof embedData.color === 'string' && embedData.color.startsWith('#')) {
+        embedData.color = parseInt(embedData.color.replace('#', ''), 16);
+      } else if (typeof embedData.color === 'string' && embedData.color.trim() !== '') {
+        // if it's a string but not a valid hex, try to parse or default
+        const parsedColor = parseInt(embedData.color.replace('#', ''), 16);
+        embedData.color = isNaN(parsedColor) ? parseInt('5865F2', 16) : parsedColor;
+      } else {
+        embedData.color = parseInt('5865F2', 16); // Default color if empty or not a string
+      }
+
+      if (Object.values(embedData).some(val => val && val.toString().trim() !== '')) {
+        hasAnyContentInAnyEmbed = true;
+      }
+      embeds.push(embedData);
+    });
+    
+    return {
+      enabled: document.getElementById('discord-use-embeds')?.checked || false,
+      embeds: embeds,
+      // Optional: Signal if there was any meaningful content if backend needs to know
+      // has_content: hasAnyContentInAnyEmbed 
+    };
+  }
+
+  function updateEmbedTabs() {
+    const embedTabsContainer = document.getElementById('embed-tabs');
+    const embedsContainer = document.getElementById('discord-embeds-container');
+    if (!embedTabsContainer || !embedsContainer) return;
+
+    embedTabsContainer.innerHTML = ''; // Clear existing tabs
+    const embedShells = embedsContainer.querySelectorAll(':scope > div:not(.embed-template)'); // Corrected selector for shells
+
+    if (embedShells.length > 1) {
+      embedTabsContainer.classList.remove('hidden');
+      embedShells.forEach((shell, index) => { // Iterate over shells
+        const tabButton = document.createElement('button');
+        tabButton.type = 'button';
+        tabButton.classList.add('btn', 'btn-xs');
+        tabButton.textContent = `Embed ${index + 1}`;
+        tabButton.dataset.embedIndex = index;
+        tabButton.addEventListener('click', () => switchEmbed(index));
+        
+        const removeButton = document.createElement('button');
+        removeButton.type = 'button';
+        removeButton.innerHTML = '&times;';
+        removeButton.classList.add('btn', 'btn-xs', 'btn-error', 'btn-square', 'ml-1', 'p-0', 'h-5', 'w-5', 'min-h-0', 'flex', 'items-center', 'justify-center', 'opacity-70', 'hover:opacity-100');
+        removeButton.style.lineHeight = '1';
+        removeButton.addEventListener('click', (e) => {
+          e.stopPropagation();
+          removeEmbed(shell, index); // Pass shell to removeEmbed
+        });
+        
+        const tabWrapper = document.createElement('div');
+        tabWrapper.classList.add('flex', 'items-center', 'tab-button-wrapper');
+        if (shell.style.display === 'block') { // Check display of shell
+          tabButton.classList.add('btn-active', 'bg-primary', 'text-primary-content');
+          tabButton.style.backgroundColor = ''; 
+        } else {
+          tabButton.classList.add('btn-ghost');
+          tabButton.style.backgroundColor = '#20252E';
+        }
+        tabWrapper.appendChild(tabButton);
+        tabWrapper.appendChild(removeButton);
+        embedTabsContainer.appendChild(tabWrapper);
+      });
+    } else {
+      embedTabsContainer.classList.add('hidden');
+    }
+    if (typeof updateDiscordPreview === 'function') updateDiscordPreview();
+  }
+
+  function switchEmbed(indexToShow) {
+    console.log(`[switchEmbed] Called to show index: ${indexToShow}`);
+    const embedsContainer = document.getElementById('discord-embeds-container');
+    if (!embedsContainer) {
+      console.error('[switchEmbed] Embeds container #discord-embeds-container not found!');
+      return;
+    }
+    const embedShells = embedsContainer.querySelectorAll(':scope > div:not(.embed-template)'); // Corrected selector for shells
+    console.log(`[switchEmbed] Found ${embedShells.length} embed shells (cloned, non-template).`);
+
+    if (embedShells.length === 0 && indexToShow === 0) {
+      console.warn('[switchEmbed] No embed shells found, but tried to show index 0. This might happen if addEmbed failed to append properly or template is empty.');
+    }
+
+    embedShells.forEach((shell, index) => { // Iterate over shells
+      console.log(`[switchEmbed] Processing shell ${index}: Current display: '${shell.style.display}'. Children count of shell's .embed-content: ${shell.querySelector('.embed-content')?.children.length}. HTML snapshot of .embed-content: ${shell.querySelector('.embed-content')?.innerHTML.substring(0, 100)}`);
+      if (index === indexToShow) {
+        shell.style.display = 'block';
+        console.log(`[switchEmbed] Set shell ${index} to display: 'block'. Its .embed-content has child nodes: ${shell.querySelector('.embed-content')?.hasChildNodes()}. First child of .embed-content:`, shell.querySelector('.embed-content')?.firstChild);
+      } else {
+        shell.style.display = 'none';
+      }
+    });
+    // Ensure updateEmbedTabs is called after display styles are set, so it can correctly identify the active tab.
+    if (typeof updateEmbedTabs === 'function') {
+      updateEmbedTabs();
+    } else {
+      console.error('[switchEmbed] updateEmbedTabs function is not defined!');
+    }
+  }
+
+  function removeEmbed(shellToRemove, indexToRemove) {
+      if (shellToRemove && shellToRemove.parentElement) {
+          shellToRemove.parentElement.removeChild(shellToRemove);
+          // embedCounter might not be perfectly in sync if embeds are added/removed out of its direct control
+          // It's safer to count the actual divs or rely on index.
+          
+          const embedsContainer = document.getElementById('discord-embeds-container');
+          const remainingShells = embedsContainer.querySelectorAll(':scope > div:not(.embed-template)');
+          
+          if (remainingShells.length > 0) {
+              // If the removed shell was active, or if no shell is active, make the first remaining shell active.
+              // A simple approach: always switch to the first one if any remain.
+              switchEmbed(0); 
+          } else {
+              updateEmbedTabs(); // Hide tabs if no shells left
+          }
+          if (typeof updateDiscordPreview === 'function') updateDiscordPreview();
+      }
+  }
+
+  // Function to switch active service tab
+  function switchServiceTab(serviceName, preserveState = false) {
+    console.log(`[UI TABS] Switching to service tab: ${serviceName}`);
+    activeServiceTab = serviceName;
+
+    // Update tab button styles
+    document.querySelectorAll('.service-tab-button').forEach(button => {
+      if (button.dataset.serviceTab === serviceName) {
+        button.classList.add('btn-active', 'btn-primary');
+        button.classList.remove('btn-ghost'); 
+      } else {
+        button.classList.remove('btn-active', 'btn-primary');
+        button.classList.add('btn-ghost');
+      }
+    });
+
+    // Show/hide service panels
+    document.querySelectorAll('.service-panel').forEach(panel => {
+      if (panel.dataset.serviceType === serviceName) {
+        panel.style.display = 'block';
+        if (!preserveState) {
+          const enableToggle = panel.querySelector('.service-enable-toggle');
+          const configArea = panel.querySelector('.service-config-area');
+          if (enableToggle && configArea) {
+            configArea.style.display = enableToggle.checked ? 'block' : 'none';
+          }
+        }
+      } else {
+        panel.style.display = 'none';
+      }
+    });
+    updateDiscordPreviewVisibility(); 
+  }
+  
+  function updateDiscordPreviewVisibility() {
+    const discordPanel = document.getElementById('discord-settings-panel');
+    const enableDiscordToggle = document.getElementById('enable-discord-service');
+    const showDiscordPreviewToggleContainer = document.getElementById('show-discord-preview')?.closest('.form-control');
+
+    if (showDiscordPreviewToggleContainer && discordPanel && enableDiscordToggle) {
+      const isDiscordTabActive = discordPanel.style.display === 'block';
+      const isDiscordServiceEnabled = enableDiscordToggle.checked;
+      
+      if (isDiscordTabActive && isDiscordServiceEnabled) {
+        showDiscordPreviewToggleContainer.style.display = 'flex'; 
+      } else {
+        showDiscordPreviewToggleContainer.style.display = 'none';
+        const showDiscordPreviewToggle = document.getElementById('show-discord-preview');
+        if (showDiscordPreviewToggle) showDiscordPreviewToggle.checked = false;
+        const discordPreviewSection = document.getElementById('discord-preview-section');
+        if (discordPreviewSection) discordPreviewSection.style.display = 'none';
+      }
+    }
+  }
+
+  // Main function to show edit feed modal
+  async function showEditFeedModal(id) {
+    try {
+      console.log('[MODAL SCRIPT] showEditFeedModal called for ID:', id);
+      
+      // Log current state of modalSocketInstance when modal opens
+      if (modalSocketInstance) {
+        console.log('[MODAL SCRIPT] showEditFeedModal: modalSocketInstance was already set. Connected:', modalSocketInstance.connected);
+      } else {
+        console.warn('[MODAL SCRIPT] showEditFeedModal: modalSocketInstance is NULL or UNDEFINED upon modal open. Waiting for app.js to call setModalSocketReference.');
+      }
+
+      const response = await fetch(`/api/feeds/${id}`);
+      if (!response.ok) {
+        console.error('[MODAL SCRIPT] Failed to load feed response:', response);
+        throw new Error('Failed to load feed');
+      }
+      const feed = await response.json();
+      currentFeed = feed;
+      
+      console.log('****************************************************************');
+      console.log('[MODAL SCRIPT] RAW FEED OBJECT FROM SERVER (feed ID: ' + id + '):', JSON.parse(JSON.stringify(feed)));
+      console.log('[MODAL SCRIPT] RAW feed.preview_settings:', JSON.parse(JSON.stringify(feed.preview_settings))); 
+      console.log('[MODAL SCRIPT] RAW feed.integrations:', JSON.parse(JSON.stringify(feed.integrations)));
+      console.log('[MODAL SCRIPT] RAW feed.fields_to_send:', JSON.parse(JSON.stringify(feed.fields_to_send)));
+      console.log('****************************************************************');
+
+      debug('(Original debug) Loaded feed data', feed);
+      
+      resetFormState(); // Resets everything including tab states and internal toggles
+      
+      document.getElementById('edit-feed-id').value = id;
+      document.getElementById('edit-feed-title').value = feed.title || '';
+      document.getElementById('edit-feed-url').value = feed.url || '';
+      document.getElementById('edit-feed-interval').value = feed.interval || 5;
+
+      try {
+        if (feed && feed.fields_to_send) {
+          window.selectedFields = Array.isArray(feed.fields_to_send) ? feed.fields_to_send :
+                                  typeof feed.fields_to_send === 'string' ? JSON.parse(feed.fields_to_send) : [];
+        } else {
+          window.selectedFields = [];
+        }
+        console.log('[MODAL LOAD] Initial window.selectedFields from feed:', JSON.parse(JSON.stringify(window.selectedFields)));
+      } catch (err) {
+        console.error('Error parsing fields_to_send in showEditFeedModal:', err);
+        window.selectedFields = [];
+      }
+      
+      loadPreviewSettings(feed);
+      loadFilterSettings(feed);
+      loadIntegrationSettings(feed); // This will now set internal enable toggles and populate data
+
+      // Set the active tab based on the first enabled service or default
+      const firstEnabledIntegration = feed.integrations?.find(int => int.service);
+      activeServiceTab = firstEnabledIntegration?.service || 'discord';
+      switchServiceTab(activeServiceTab, true); // true to preserve state set by loadIntegrationSettings
+
+      if (document.getElementById('show-live-preview')?.checked && feed.url) {
+        debug('Live preview is checked, calling detectFields...');
+        const fieldsBeforeDetect = JSON.parse(JSON.stringify(window.selectedFields));
+        await detectFields();
+        console.log('[MODAL LOAD] window.selectedFields after detectFields. Before:', fieldsBeforeDetect, 'After:', JSON.parse(JSON.stringify(window.selectedFields)));
+      } else if (window.selectedFields.length > 0 && document.getElementById('field-checkboxes')) {
+        debug('Live preview not checked but selectedFields exist, calling renderFieldCheckboxes.');
+        if (typeof renderFieldCheckboxes === 'function') {
+          renderFieldCheckboxes();
+        }
+      }
+
+      document.getElementById('edit-feed-modal').showModal();
+      
+      setTimeout(() => {
+        // Event handlers should be set up regardless of socket state at this exact moment
+        // The save handler will check modalSocketInstance when it runs.
+        setupEventHandlers();
+        console.log('✅ Event handlers set up for edit modal with new tab UI');
+      }, 100);
+      
+    } catch (err) {
+      console.error('Error showing edit modal:', err);
+      showToast(err.message, 'error');
+    }
+  }
+
+  function resetFormState() {
+    // Reset service enable toggles and their config areas
+    document.querySelectorAll('.service-enable-toggle').forEach(toggle => {
+      toggle.checked = false;
+      const serviceName = toggle.dataset.serviceName;
+      const panel = document.getElementById(`${serviceName}-settings-panel`);
+      if (panel) {
+        const configArea = panel.querySelector('.service-config-area');
+        if (configArea) configArea.style.display = 'none';
+      }
+    });
+
+    // Reset preview toggles
+    ['show-live-preview', 'show-recent-articles', 'show-discord-preview'].forEach(id => {
+      const toggle = document.getElementById(id);
+      if (toggle) {
+        toggle.checked = false;
+        const section = document.getElementById(id.replace('show-', '') + '-section');
+        if (section) section.style.display = 'none';
+      }
+    });
+    
+    updateDiscordPreviewVisibility(); // Ensure Discord preview toggle is hidden initially
+
+    // Reset embeds (specific to Discord panel)
+    const embedContainer = document.getElementById('discord-embeds-container');
+    if (embedContainer) {
+      embedContainer.querySelectorAll(':scope > div:not(.embed-template)').forEach(div => div.remove());
+    }
+    const embedToggle = document.getElementById('discord-use-embeds');
+    if (embedToggle) {
+      embedToggle.checked = false;
+      const embedSettingsSection = document.getElementById('discord-embed-settings');
+      if (embedSettingsSection) embedSettingsSection.style.display = 'none';
+    }
+    embedCounter = 0; // Reset embed counter
+
+    // Clear field selections
+    document.querySelectorAll('#field-checkboxes input[type="checkbox"]').forEach(checkbox => {
+      checkbox.checked = false;
+    });
+    
+    // Reset all select dropdowns for integrations
+    document.querySelectorAll('.integration-select').forEach(select => {
+      select.value = ""; // Set to "Custom Configuration"
+      const serviceType = select.dataset.serviceSelect;
+      const customSettings = document.getElementById(`${serviceType}-custom-settings`);
+      if (customSettings) customSettings.style.display = 'block'; // Default to show custom if no connection
+    });
+    
+    // Reset tab display to default (e.g., Discord)
+    switchServiceTab('discord'); // Switch to discord tab by default, hiding others and their configs
+  }
+
+  function loadPreviewSettings(feed) {
+    console.log('🔄 Loading preview settings for feed:', feed.id);
+    if (feed.preview_settings) {
+      console.log('📋 Found preview settings:', feed.preview_settings);
+      const settings = [
+        { id: 'show-live-preview', section: 'live-preview-section', key: 'show_live_preview' },
+        { id: 'show-recent-articles', section: 'recent-articles-section', key: 'show_recent_articles' },
+        { id: 'show-discord-preview', section: 'discord-preview-section', key: 'show_discord_preview' }
+      ];
+      settings.forEach(setting => {
+        const toggle = document.getElementById(setting.id);
+        const section = document.getElementById(setting.section);
+        if (toggle && section) { // Added section check
+          if (feed.preview_settings[setting.key]) {
+            console.log(`✅ Enabling ${setting.id}`);
+            toggle.checked = true;
+            if (setting.id !== 'show-discord-preview') { // Discord preview visibility is handled by updateDiscordPreviewVisibility
+                 section.style.display = 'block';
+            }
+            if (setting.id === 'show-live-preview' && typeof window.refreshPreview === 'function') window.refreshPreview();
+            if (setting.id === 'show-recent-articles' && typeof window.refreshArticles === 'function') window.refreshArticles();
+          } else {
+            console.log(`❌ Disabling ${setting.id}`);
+            toggle.checked = false;
+            section.style.display = 'none';
+          }
+        }
+      });
+    } else {
+      console.log('ℹ️ No preview settings found for feed');
+    }
+    updateDiscordPreviewVisibility(); // Crucial: Call after all preview settings loaded
+  }
+
+  function loadFilterSettings(feed) {
+    if (feed.filters) {
+      debug('Loading filter settings', feed.filters);
+      const titleFilter = document.getElementById('edit-feed-title-filter');
+      const contentFilter = document.getElementById('edit-feed-content-filter');
+      const filterMode = document.getElementById('edit-feed-filter-mode');
+      if (titleFilter) titleFilter.value = feed.filters.title || '';
+      if (contentFilter) contentFilter.value = feed.filters.content || '';
+      if (filterMode) filterMode.checked = feed.filters.match_any || false;
+    }
+  }
+
+  function loadIntegrationSettings(feed) {
+    if (!feed.integrations || !Array.isArray(feed.integrations)) {
+      // If no integrations, ensure all enable toggles are off and config areas hidden
+      document.querySelectorAll('.service-enable-toggle').forEach(enableToggle => {
+        enableToggle.checked = false;
+        const panel = enableToggle.closest('.service-panel');
+        if (panel) {
+          const configArea = panel.querySelector('.service-config-area');
+          if (configArea) configArea.style.display = 'none';
+        }
+      });
+      // Also ensure all integration selects are reset and custom areas hidden
+      document.querySelectorAll('.integration-select').forEach(select => {
+        select.value = ""; // Default to custom
+        const serviceType = select.dataset.serviceSelect;
+        if (serviceType) {
+            const panel = select.closest('.service-panel');
+            const customSettingsArea = panel?.querySelector(`#${serviceType}-custom-settings`);
+            if (customSettingsArea) customSettingsArea.style.display = 'block'; // Show custom if no integration defined for service
+        }
+      });
+      return;
+    }
+    
+    debug('Loading integration settings (new tab structure)', feed.integrations);
+    
+    ['discord', 'telegram', 'slack', 'email'].forEach(serviceName => {
+      const integration = feed.integrations.find(integ => integ.service === serviceName);
+      const panel = document.getElementById(`${serviceName}-settings-panel`);
+      if (!panel) return;
+
+      const enableToggle = panel.querySelector(`#enable-${serviceName}-service`);
+      const configArea = panel.querySelector('.service-config-area');
+      const select = panel.querySelector(`#${serviceName}-integration-select`);
+      const customSettingsArea = panel.querySelector(`#${serviceName}-custom-settings`);
+
+      if (integration && enableToggle && configArea && select && customSettingsArea) {
+        console.log(`[LOAD INTEG] Found integration for ${serviceName}:`, integration);
+        enableToggle.checked = true; // Assuming if integration exists, it's enabled.
+        configArea.style.display = 'block';
+
+        if (integration.connection_id) {
+          select.value = integration.connection_id;
+          customSettingsArea.style.display = 'none';
+          // If it's discord and has a connection_id, still load its embed settings if present
+          if (serviceName === 'discord' && integration.embed_settings) {
+            const useEmbedsToggle = panel.querySelector('#discord-use-embeds');
+            if (useEmbedsToggle) {
+              useEmbedsToggle.checked = integration.embed_settings.enabled;
+              const embedSettingsSection = document.getElementById('discord-embed-settings');
+              if (embedSettingsSection) {
+                embedSettingsSection.style.display = integration.embed_settings.enabled ? 'block' : 'none';
+                if (integration.embed_settings.enabled) {
+                  loadEmbedSettings(integration.embed_settings);
+                }
+              }
+            }
+          }
+        } else { // Custom configuration
+          select.value = ''; // Set to "Custom Configuration"
+          customSettingsArea.style.display = 'block';
+          loadCustomIntegrationSettings(integration, panel); // Load values into custom fields
+        }
+      } else if (enableToggle && configArea && select && customSettingsArea) { // Service is not in feed.integrations or some elements missing
+        enableToggle.checked = false;
+        configArea.style.display = 'none';
+        select.value = ''; // Default to custom config
+        customSettingsArea.style.display = 'block'; // Show custom area if service not enabled but user might enable it
+      }
+    });
+    updateDiscordPreviewVisibility(); // Ensure correct state after loading all integrations
+  }
+
+  // Modified to accept a panel argument to scope its querySelectors
+  function loadCustomIntegrationSettings(integration, panelElement) {
+    const serviceType = integration.service;
+    // Ensure panelElement is valid
+    if (!panelElement || typeof panelElement.querySelector !== 'function') {
+        console.error(`[loadCustomIntegrationSettings] Invalid panelElement for service ${serviceType}`, panelElement);
+        return;
+    }
+
+    if (serviceType === 'discord') {
+      const webhookInput = panelElement.querySelector('input[name="discord_webhook_url"]');
+      const usernameInput = panelElement.querySelector('input[name="discord_username"]');
+      const avatarInput = panelElement.querySelector('input[name="discord_avatar"]');
+      const useEmbedsToggle = panelElement.querySelector('#discord-use-embeds'); // ID is unique
+      
+      if (webhookInput) webhookInput.value = integration.webhook_url || '';
+      if (usernameInput) usernameInput.value = integration.username || '';
+      if (avatarInput) avatarInput.value = integration.avatar_url || '';
+      
+      if (integration.embed_settings && integration.embed_settings.enabled) {
+        if (useEmbedsToggle) {
+          useEmbedsToggle.checked = true;
+          // The #discord-embed-settings div is unique, no need to scope to panel here
+          const embedSettingsSection = document.getElementById('discord-embed-settings'); 
+          if (embedSettingsSection) {
+            embedSettingsSection.style.display = 'block';
+            loadEmbedSettings(integration.embed_settings); // This function uses unique IDs for embed container
+          }
+        }
+      } else if (useEmbedsToggle) {
+        useEmbedsToggle.checked = false;
+        const embedSettingsSection = document.getElementById('discord-embed-settings');
+        if (embedSettingsSection) embedSettingsSection.style.display = 'none';
+      }
+    } else if (serviceType === 'telegram') {
+      const tokenInput = panelElement.querySelector('input[name="telegram_token"]');
+      const chatIdInput = panelElement.querySelector('input[name="telegram_chat_id"]');
+      if (tokenInput) tokenInput.value = integration.token || '';
+      if (chatIdInput) chatIdInput.value = integration.chat_id || '';
+    } else if (serviceType === 'slack') {
+      const webhookInput = panelElement.querySelector('input[name="slack_webhook_url"]');
+      if (webhookInput) webhookInput.value = integration.webhook_url || '';
+    } else if (serviceType === 'email') {
+      const emailInput = panelElement.querySelector('input[name="email_address"]');
+      if (emailInput) emailInput.value = integration.email || '';
+    }
+  }
+
+
+  function loadEmbedSettings(embedSettings) { // This function already uses unique IDs, no panel needed
+    if (!embedSettings.embeds || !Array.isArray(embedSettings.embeds)) return;
+    debug('Loading embed settings', embedSettings);
+    const container = document.getElementById('discord-embeds-container');
+    container.querySelectorAll(':scope > div:not(.embed-template)').forEach(div => div.remove());
+    embedSettings.embeds.forEach((embedData, index) => {
+      addEmbed(); // This function also uses unique IDs
+      const embedDiv = container.querySelectorAll(':scope > div:not(.embed-template)')[index];
+      if (embedDiv) {
+        populateEmbedFields(embedDiv, embedData); // Uses selectors within embedDiv
+      }
+    });
+    if (embedSettings.embeds.length === 0 && document.getElementById('discord-use-embeds')?.checked) {
+      addEmbed();
+    }
+     // Update tabs after loading new embeds
+    if (typeof updateEmbedTabs === 'function') updateEmbedTabs();
+  }
+
+  function populateEmbedFields(embedDiv, embedData) { // Stays the same, operates on given embedDiv
+    const fields = [
+      { name: 'embed_author', value: embedData.author },
+      { name: 'embed_title', value: embedData.title },
+      { name: 'embed_description', value: embedData.description },
+      { name: 'embed_url', value: embedData.url },
+      { name: 'embed_footer', value: embedData.footer },
+      { name: 'embed_thumbnail', value: embedData.thumbnail },
+      { name: 'embed_image', value: embedData.image }
+    ];
+    fields.forEach(field => {
+      const input = embedDiv.querySelector(`[name="${field.name}"]`);
+      if (input && field.value !== undefined && field.value !== null) { // Check for existence
+        input.value = field.value;
+      } else if (input) {
+        input.value = ''; // Clear if no value
+      }
+    });
+    if (embedData.color && typeof embedData.color === 'number') {
+      const colorInput = embedDiv.querySelector('[name="embed_color"]');
+      if (colorInput) {
+        const colorHex = '#' + embedData.color.toString(16).padStart(6, '0');
+        colorInput.value = colorHex;
+      }
+    } else {
+       const colorInput = embedDiv.querySelector('[name="embed_color"]');
+       if (colorInput) colorInput.value = '#5865F2'; // Default color
+    }
+  }
+
+  // Add embed functionality - no change needed, uses unique IDs
+  function addEmbed(event) { // Modified to be more resilient to missing event
+    console.log('[addEmbed] Invoked!', event ? 'with event' : 'programmatically');
+    if (event && typeof event.preventDefault === 'function') {
+      event.preventDefault();
+      event.stopPropagation();
+      console.log('[addEmbed] Event default prevented and propagation stopped.');
+    } else {
+      console.warn('[addEmbed] Event object or its methods are missing. Proceeding programmatically.');
+    }
+    const container = document.getElementById('discord-embeds-container');
+    if (!container) {
+      console.error('[addEmbed] Embed container #discord-embeds-container not found!');
+      showToast('Error: Embed container not found', 'error');
+      return;
+    }
+    console.log('[addEmbed] Embed container found.');
+    const existingEmbeds = container.querySelectorAll(':scope > div:not(.embed-template)');
+    if (existingEmbeds.length >= 10) {
+      console.warn('[addEmbed] Maximum of 10 embeds reached.');
+      showToast('Maximum of 10 embeds reached.', 'warning');
+      return;
+    }
+    console.log(`[addEmbed] Current embed count: ${existingEmbeds.length}, proceeding to add new embed.`);
+    const template = document.querySelector('.embed-template');
+    if (!template) {
+      console.error('[addEmbed] Embed template .embed-template not found!');
+      showToast('Error: Embed template not found', 'error');
+      return;
+    }
+    console.log('[addEmbed] Embed template found.');
+    const embed = template.cloneNode(true);
+    embed.classList.remove('hidden', 'embed-template');
+    embed.dataset.embedIndex = embedCounter++;
+    console.log(`[addEmbed] Cloned template, new embed index: ${embed.dataset.embedIndex}`);
+    embed.querySelectorAll('input, textarea').forEach(input => {
+      input.addEventListener('input', () => {
+        if (typeof window.updateDiscordPreview === 'function') {
+          window.updateDiscordPreview(); 
+        }
+      });
+    });
+    console.log('[addEmbed] Added input listeners to new embed.');
+    embed.style.display = 'block';
+    container.appendChild(embed);
+    console.log('[addEmbed] New embed appended to container and set to display:block.');
+    if (typeof updateEmbedTabs === 'function') {
+      console.log('[addEmbed] Calling updateEmbedTabs().');
+      updateEmbedTabs();
+      const embedCount = container.querySelectorAll(':scope > div:not(.embed-template)').length;
+      console.log(`[addEmbed] Added embed. Total embeds now: ${embedCount}`);
+      if (typeof switchEmbed === 'function') {
+        console.log(`[addEmbed] Calling switchEmbed(${embedCount - 1}).`);
+        switchEmbed(embedCount - 1);
+      }
+    } else {
+      console.error('[addEmbed] updateEmbedTabs function is not defined!');
+    }
+  }
+
+  // removeEmbed, switchEmbed, updateEmbedTabs - no changes needed, use unique IDs and operate on specific elements
+
+  // Test notification function - for the button under "Live Preview"
+  async function testNotification() {
+    console.log('🧪 Testing notification (Live Preview button)...');
+    let feedId = currentFeed?.id;
+    if (!feedId) {
+      feedId = document.getElementById('edit-feed-id')?.value;
+    }
+    if (!feedId) {
+      showToast('Please save the feed first', 'error', 3000, 'toast-container'); // MODIFIED
+      return;
+    }
+    console.log('🎯 Testing notification for feed ID:', feedId);
+    try {
+      const selectedFields = [];
+      document.querySelectorAll('#field-checkboxes input[type="checkbox"]:checked').forEach(checkbox => {
+        selectedFields.push(checkbox.value);
+      });
+      if (selectedFields.length === 0) {
+        showToast('Please select at least one field to include in the test notification', 'warning', 3000, 'toast-container'); // MODIFIED
+        return;
+      }
+      
+      const allIntegrations = collectIntegrationSettings(); 
+      
+      if (allIntegrations.length === 0) {
+        showToast('Please enable and configure at least one integration service (Discord, Telegram, etc.)', 'error', 3000, 'toast-container'); // MODIFIED
+        return;
+      }
+      
+      const previewResponse = await fetch(`/api/feeds/${feedId}/preview`);
+      if (!previewResponse.ok) throw new Error('Failed to load preview data for test');
+      const previewData = await previewResponse.json();
+      const mostRecentArticle = previewData.items && previewData.items.length > 0 ? previewData.items[0] : {};
+      
+      if (Object.keys(mostRecentArticle).length === 0) {
+        showToast('No articles available in feed to use for test data', 'error', 3000, 'toast-container'); // MODIFIED
+        return;
+      }
+      
+      const filteredTestItem = {};
+      selectedFields.forEach(field => {
+        if (mostRecentArticle.hasOwnProperty(field)) {
+          filteredTestItem[field] = mostRecentArticle[field];
+        } else {
+          filteredTestItem[field] = `Selected field: ${field} - (No value in latest item)`;
+        }
+      });
+      
+      const testData = {
+        test_item: filteredTestItem,
+        fields_to_send: selectedFields, 
+        integrations: allIntegrations
+      };
+      
+      console.log('📤 Sending test data (all services):', testData);
+      showToast('Sending test notification to all enabled services...', 'info', 3000, 'toast-container'); // MODIFIED
+      
+      const response = await fetch(`/api/feeds/${feedId}/send-test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(testData)
+      });
+      const result = await response.json();
+      console.log('📨 Test response (all services):', result);
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to send test notification');
+      }
+      showToast(result.message || 'Test notification sent successfully to all enabled services!', 'success', 3000, 'toast-container'); // MODIFIED
+    } catch (err) {
+      console.error('❌ Test notification error (all services):', err);
+      showToast(`Test failed: ${err.message}`, 'error', 5000, 'toast-container'); // MODIFIED
+    }
+  }
+
+  function collectIntegrationSettings() {
+    const integrationsData = [];
+    console.log('[collectIntegrationSettings] Starting collection for new UI.');
+
+    document.querySelectorAll('.service-panel').forEach(panel => {
+      const serviceName = panel.dataset.serviceType;
+      const enableToggle = panel.querySelector(`#enable-${serviceName}-service`);
+
+      if (enableToggle && enableToggle.checked) {
+        console.log(`[collectIntegrationSettings] Service '${serviceName}' is ENABLED.`);
+        let integration = { service: serviceName };
+        const configArea = panel.querySelector('.service-config-area');
+        if (!configArea) return;
+
+        const select = configArea.querySelector(`#${serviceName}-integration-select`);
+        
+        if (select && select.value) { // Existing connection selected
+          console.log(`[collectIntegrationSettings] Using existing connection for ${serviceName}: ${select.value}`);
+          integration.connection_id = select.value;
+          if (serviceName === 'discord') {
+            const useEmbedsToggleState = configArea.querySelector('#discord-use-embeds')?.checked;
+            integration.use_embeds = useEmbedsToggleState;
+            integration.embed_settings = collectEmbedSettings();
+            console.log(`[collectIntegrationSettings] Discord (conn_id) - use_embeds: ${integration.use_embeds}, embed_settings.enabled: ${integration.embed_settings.enabled}`);
+          }
+        } else { // Custom configuration
+          console.log(`[collectIntegrationSettings] Using custom config for ${serviceName}`);
+          const customSettingsArea = configArea.querySelector(`#${serviceName}-custom-settings`);
+          if (!customSettingsArea) return;
+
+          if (serviceName === 'discord') {
+            integration.webhook_url = customSettingsArea.querySelector('input[name="discord_webhook_url"]')?.value || '';
+            integration.username = customSettingsArea.querySelector('input[name="discord_username"]')?.value; // Removed default 'RSS Monitor'
+            integration.avatar_url = customSettingsArea.querySelector('input[name="discord_avatar"]')?.value || '';
+            const useEmbedsToggleState = configArea.querySelector('#discord-use-embeds')?.checked;
+            integration.use_embeds = useEmbedsToggleState;
+            integration.embed_settings = collectEmbedSettings();
+            console.log(`[collectIntegrationSettings] Discord (custom) - use_embeds: ${integration.use_embeds}, embed_settings.enabled: ${integration.embed_settings.enabled}`);
+          } else if (serviceName === 'telegram') {
+            integration.token = customSettingsArea.querySelector('input[name="telegram_token"]')?.value || '';
+            integration.chat_id = customSettingsArea.querySelector('input[name="telegram_chat_id"]')?.value || '';
+          } else if (serviceName === 'slack') {
+            integration.webhook_url = customSettingsArea.querySelector('input[name="slack_webhook_url"]')?.value || '';
+          } else if (serviceName === 'email') {
+            integration.email = customSettingsArea.querySelector('input[name="email_address"]')?.value || '';
+          }
+        }
+        
+        // Validate if enough data was collected for this integration to be useful
+        let isDataSufficient = false;
+        if (integration.connection_id) {
+          isDataSufficient = true; // If a connection is selected, it's considered sufficient.
+                                   // Embeds for Discord with connection_id are additive and handled during collection.
+        } else {
+          // Custom configuration
+          if (serviceName === 'discord') {
+            const hasWebhook = integration.webhook_url && integration.webhook_url.trim() !== '';
+            const hasEnabledEmbeds = integration.embed_settings && 
+                                     integration.embed_settings.enabled && 
+                                     integration.embed_settings.embeds && 
+                                     integration.embed_settings.embeds.length > 0;
+            isDataSufficient = hasWebhook || hasEnabledEmbeds;
+          } else if (serviceName === 'telegram') {
+            isDataSufficient = (integration.token && integration.token.trim() !== '') && 
+                               (integration.chat_id && integration.chat_id.trim() !== '');
+          } else if (serviceName === 'slack') {
+            isDataSufficient = integration.webhook_url && integration.webhook_url.trim() !== '';
+          } else if (serviceName === 'email') {
+            // Corrected: Email only needs an email address
+            isDataSufficient = integration.email && integration.email.trim() !== '';
+          }
+        }
+
+        if (isDataSufficient) {
+            integrationsData.push(integration);
+        } else {
+            // Provide more details in the log if data is deemed insufficient
+            console.warn(`[collectIntegrationSettings] Insufficient data for enabled service '${serviceName}', skipping. Collected:`, JSON.parse(JSON.stringify(integration)));
+        }
+      } else {
+         console.log(`[collectIntegrationSettings] Service '${serviceName}' is NOT enabled.`);
+      }
+    });
+    
+    console.log('[collectIntegrationSettings] Final collected integrations:', JSON.parse(JSON.stringify(integrationsData)));
+    return integrationsData;
+  }
+
+  function setupEventHandlers() {
+    debug('Setting up edit modal event handlers (new tab UI)');
+
+    // Preview section toggles - set up fresh each time
+    ['show-live-preview', 'show-recent-articles', 'show-discord-preview'].forEach(id => {
+      const toggle = document.getElementById(id);
+      const sectionId = id.replace('show-', '') + '-section';
+      const section = document.getElementById(sectionId);
+      const discordPreviewActualSection = document.getElementById('discord-preview-section'); // Specific for discord
+
+      if (toggle && toggle.parentNode && (section || (id === 'show-discord-preview' && discordPreviewActualSection) )) { // Ensure elements exist
+        const isChecked = toggle.checked;
+        const newToggle = toggle.cloneNode(true);
+        newToggle.checked = isChecked;
+        toggle.parentNode.replaceChild(newToggle, toggle);
+        
+        newToggle.addEventListener('change', function() {
+          console.log(`🔄 Preview Toggle changed for ${id}:`, this.checked);
+
+          if (id === 'show-discord-preview') {
+            if (discordPreviewActualSection) {
+              discordPreviewActualSection.style.display = this.checked ? 'block' : 'none';
+            }
+            if (this.checked && typeof window.updateDiscordPreview === 'function') {
+              window.updateDiscordPreview();
+            }
+            // updateDiscordPreviewVisibility(); // This handles the toggle's own visibility based on service status
+          } else if (section) { // For live-preview and recent-articles
+            section.style.display = this.checked ? 'block' : 'none';
+          }
+
+          // Common logic for acting on check (refreshing content)
+          if (this.checked) {
+            if (id === 'show-live-preview' && typeof window.refreshPreview === 'function') window.refreshPreview();
+            if (id === 'show-recent-articles' && typeof window.refreshArticles === 'function') window.refreshArticles();
+            // updateDiscordPreview is handled above for its specific case
+          }
+        });
+      }
+    });
+
+    // Service Tab Button clicks
+    document.querySelectorAll('.service-tab-button').forEach(button => {
+      const newButton = button.cloneNode(true); // Clone to remove old listeners
+      button.parentNode.replaceChild(newButton, button);
+      newButton.addEventListener('click', function() {
+        switchServiceTab(this.dataset.serviceTab);
+      });
+    });
+
+    // "Enable Service" Toggles
+    document.querySelectorAll('.service-enable-toggle').forEach(enableToggle => {
+      if (enableToggle.parentNode) {
+        const isChecked = enableToggle.checked;
+        const newEnableToggle = enableToggle.cloneNode(true);
+        newEnableToggle.checked = isChecked;
+        enableToggle.parentNode.replaceChild(newEnableToggle, enableToggle);
+
+        newEnableToggle.addEventListener('change', function() {
+          const serviceName = this.dataset.serviceName;
+          console.log(`🔧 Enable Service toggle changed for ${serviceName}:`, this.checked);
+          const panel = this.closest('.service-panel');
+          if (panel) {
+            const configArea = panel.querySelector('.service-config-area');
+            if (configArea) {
+              configArea.style.display = this.checked ? 'block' : 'none';
+            }
+          }
+        });
+      }
+    });
+    
+    // Integration Select (Use Existing / Custom) changes
+    document.querySelectorAll('.integration-select').forEach(select => {
+      if (select.parentNode) {
+        const selectedValue = select.value;
+        const newSelect = select.cloneNode(true);
+        newSelect.value = selectedValue;
+        select.parentNode.replaceChild(newSelect, select);
+        
+        newSelect.addEventListener('change', function() {
+          const serviceType = this.dataset.serviceSelect; // Use the data attribute from select
+          console.log(`📋 Integration select changed for ${serviceType}:`, this.value);
+          const panel = this.closest('.service-panel'); // Find parent panel
+          if (panel) {
+            const customSettingsArea = panel.querySelector(`#${serviceType}-custom-settings`); // Scope to panel
+            if (customSettingsArea) {
+              customSettingsArea.style.display = this.value === '' ? 'block' : 'none';
+            }
+          }
+        });
+      }
+    });
+
+    // Discord "Use Rich Embeds" toggle
+    const discordUseEmbeds = document.getElementById('discord-use-embeds');
+    if (discordUseEmbeds && discordUseEmbeds.parentNode) { 
+      const isChecked = discordUseEmbeds.checked;
+      const newEmbedToggle = discordUseEmbeds.cloneNode(true);
+      newEmbedToggle.checked = isChecked;
+      discordUseEmbeds.parentNode.replaceChild(newEmbedToggle, discordUseEmbeds);
+      
+      newEmbedToggle.addEventListener('change', function() {
+        const embedSettingsSection = document.getElementById('discord-embed-settings'); // Unique ID
+        if (embedSettingsSection) {
+          embedSettingsSection.style.display = this.checked ? 'block' : 'none';
+          if (this.checked) {
+            const container = document.getElementById('discord-embeds-container');
+            if (container.querySelectorAll(':scope > div:not(.embed-template)').length === 0) {
+               console.log('🆕 Adding first embed because "Use Rich Embeds" was toggled on and no embeds exist.');
+               if (typeof window.addEmbed === 'function') window.addEmbed(); 
+            }
+          }
+        }
+        console.log('💎 Discord embeds toggled:', this.checked);
+        if (typeof window.updateDiscordPreview === 'function') window.updateDiscordPreview();
+      });
+    }
+    
+    if (typeof window.renderFieldCheckboxes === 'function') {
+        console.log('[MODAL SCRIPT] setupEventHandlers calling renderFieldCheckboxes with window.selectedFields:', JSON.parse(JSON.stringify(window.selectedFields)));
+        window.renderFieldCheckboxes(); 
+    } else {
+        console.error('[MODAL SCRIPT] renderFieldCheckboxes function is not available globally from setupEventHandlers.');
+    }
+
+    // Set initial active tab (e.g., Discord)
+    // switchServiceTab(activeServiceTab || 'discord', true); // preserveState true, as loadIntegrationSettings has run
+    
+    // Instead of the above, ensure the active tab is correctly set based on previous state or default.
+    // loadIntegrationSettings should set the toggles, then showEditFeedModal calls switchServiceTab.
+    // This ensures the correct tab's config area visibility is set based on its enable toggle.
+
+    console.log('✅ All modal-specific event handlers re-attached for new tab UI.');
+  }
+
+  // Helper functions for preview (refreshPreview, refreshArticles, detectFields) - no changes needed
+  // Test embed configuration (testEmbed) - for the button within embed settings
+  // showToast - no changes needed
+  // window assignments - no changes needed
+  // MODIFIED Form submission handler for #edit-feed-form
+  const editFeedForm = document.getElementById('edit-feed-form');
+
+  // Function to provide a sample article object for testing
+  function getSampleArticle() {
+    return {
+      id: 'sample-article-123', // Added ID
+      title: 'Sample Article Title',
+      description: 'This is a sample description for the article. It might contain Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
+      content: 'This is the full sample content of the article, which could be longer and include more details than the description. It often includes HTML tags if not stripped.',
+      link: 'http://example.com/sample-article',
+      url: 'http://example.com/sample-article-url-field', // Added URL as a distinct field from link
+      author: 'RSS Monitor Bot',
+      pubDate: new Date().toISOString(),
+      published: new Date().toISOString(), // Added 'published' as an alias for pubDate
+      updated: new Date(Date.now() - 3600 * 1000).toISOString(), // Added 'updated'
+      category: 'Sample Category, Test', // Added 'category'
+      guid: 'sample-guid-xyz789', // Added 'guid'
+      image: 'http://example.com/sample-image.jpg',
+      thumbnail: 'http://example.com/sample-thumbnail.png'
+      // Add any other fields you commonly use in embeds
+    };
+  }
+
+  if (editFeedForm) {
+    // Remove any existing listeners first to prevent duplicates if this script block re-runs
+    // This is a common issue if the modal HTML is re-injected or script re-executed.
+    // A more robust way is to ensure this setup runs only once, or use a flag.
+    // For now, direct replacement or ensuring single execution is key.
+    
+    // Let's assume for now this is the only place it's added, or prior attempts to add it are being replaced.
+    editFeedForm.addEventListener('submit', async (e) => {
+      e.preventDefault(); // CRITICAL: Stop default form submission (page refresh)
+      e.stopPropagation(); // CRITICAL: Stop event bubbling
+      
+      console.log('💾 Saving feed configuration via DEDICATED modal handler (version from recovery)...');
+
+      const formData = new FormData(editFeedForm);
+      const feedId = formData.get('id'); // Get feedId for the API endpoint
+
+      // Data collection (ensure collectIntegrationSettings is the correct version)
+      const data = {
+        id: feedId,
+        title: formData.get('title'),
+        url: formData.get('url'),
+        interval: parseInt(formData.get('interval')),
+        integrations: collectIntegrationSettings(), // THIS MUST BE THE CORRECT, WORKING VERSION
+        preview_settings: {
+          show_live_preview: document.getElementById('show-live-preview')?.checked || false,
+          show_recent_articles: document.getElementById('show-recent-articles')?.checked || false,
+          show_discord_preview: document.getElementById('show-discord-preview')?.checked || false
+        },
+        filters: {
+          title: formData.get('title_filter') || '',
+          content: formData.get('content_filter') || '',
+          match_any: document.getElementById('edit-feed-filter-mode')?.checked || false
+        },
+        fields_to_send: [] // Initialize as empty
+      };
+
+      // Collect selected fields from checkboxes
+      document.querySelectorAll('#field-checkboxes input[type="checkbox"]:checked').forEach(checkbox => {
+        data.fields_to_send.push(checkbox.value);
+      });
+      
+      // Log the data being sent
+      console.log('[SAVE FEED] Data being sent to server:', JSON.parse(JSON.stringify(data)));
+
+      const submitBtn = editFeedForm.querySelector('button[type="submit"]');
+      const originalText = submitBtn.textContent;
+      submitBtn.textContent = 'Saving...';
+      submitBtn.disabled = true;
+
+      try {
+        const response = await fetch(`/api/feeds/${feedId}`, { // Use feedId in the URL
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        
+        const result = await response.json(); // Assuming server always returns JSON
+        console.log('📨 Dedicated Modal Handler: Server response:', result);
+        
+        if (!response.ok) {
+          // Use error message from server response if available
+          throw new Error(result.error || `Failed to update feed. Status: ${response.status}`);
+        }
+
+        showToast('✅ Feed updated successfully!', 'success');
+        
+        // Real-time update via Socket.io
+        if (modalSocketInstance && modalSocketInstance.connected && typeof modalSocketInstance.emit === 'function') { // <-- Changed to modalSocketInstance
+          // Construct the data to emit - should match what the main page expects
+          // Typically, this would be the updated feed object. 
+          // If result.feed is the updated feed, use that. Otherwise, merge.
+          const updatedFeedDataForEmit = result.feed || { ...currentFeed, ...data }; 
+          modalSocketInstance.emit('feedUpdated', updatedFeedDataForEmit); // <-- Changed to modalSocketInstance // Ensure 'feedUpdated' is the correct event name
+          console.log('📡 Dedicated Modal Handler: Sent real-time update via feedUpdated.', updatedFeedDataForEmit);
+        } else {
+          console.warn('⚠️ Dedicated Modal Handler: modalSocketInstance not available, not connected, or emit is not a function.', // <-- Changed to modalSocketInstance
+            { 
+              socket_instance_exists: !!modalSocketInstance, // <-- Changed to modalSocketInstance
+              is_connected: modalSocketInstance ? modalSocketInstance.connected : 'N/A', // <-- Changed to modalSocketInstance
+              emit_exists: modalSocketInstance ? typeof modalSocketInstance.emit === 'function' : 'N/A', // <-- Changed to modalSocketInstance
+              socket_object: modalSocketInstance // <-- Changed to modalSocketInstance // Log the socket object itself for deeper inspection if needed
+            });
+        }
+        
+        // Update currentFeed cache if you have one client-side
+        if (currentFeed && currentFeed.id === feedId) {
+             currentFeed = { ...currentFeed, ...data };
+        }
+
+        document.getElementById('edit-feed-modal').close();
+
+      } catch (err) {
+        console.error('❌ Dedicated Modal Handler: Error saving feed:', err);
+        showToast(`Save failed: ${err.message}`, 'error');
+      } finally {
+        if(submitBtn) { // Check if submitBtn still exists
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
+        }
+      }
+    });
+    console.log('[FORM HANDLER] Attached non-refreshing submit listener to #edit-feed-form.');
+  } else {
+    console.error('[FORM HANDLER] #edit-feed-form not found, cannot attach submit listener.');
+  }
+
+  // Make sure other essential window functions are still defined, e.g.:
+  // window.showEditFeedModal = showEditFeedModal;
+  // window.addEmbed = addEmbed;
+  // ... etc.
+
+  // Make key embed functions globally accessible
+  window.addEmbed = addEmbed;
+  window.removeEmbed = removeEmbed;
+  window.switchEmbed = switchEmbed;
+  window.updateEmbedTabs = updateEmbedTabs;
+
+  // Placeholder for the test button within embed settings
+  async function testEmbed() {
+    if (!currentFeed || !currentFeed.id) {
+      showToast('Please save the feed before testing embeds.', 'warning', 3000, 'toast-container');
+      return;
+    }
+
+    const embedSettings = collectEmbedSettings();
+    // const testItem = getSampleArticle(); // We will fetch live data instead
+
+    if (!embedSettings.enabled || embedSettings.embeds.length === 0) {
+      showToast('Embeds are not enabled or no embeds are configured.', 'info', 3000, 'toast-container');
+      return;
+    }
+
+    let liveTestItem = {};
+    try {
+      showToast('Fetching latest article for embed test...', 'info', 2000, 'toast-container');
+      const previewResponse = await fetch(`/api/feeds/${currentFeed.id}/preview`);
+      if (!previewResponse.ok) {
+        const errorResult = await previewResponse.json().catch(() => ({ error: 'Failed to load preview data, server response not OK.' }));
+        throw new Error(errorResult.error || `Failed to load preview data (status ${previewResponse.status})`);
+      }
+      const previewData = await previewResponse.json();
+      if (previewData.items && previewData.items.length > 0) {
+        liveTestItem = previewData.items[0];
+        console.log('[testEmbed] Fetched live item for test:', JSON.stringify(liveTestItem, null, 2));
+      } else {
+        showToast('No articles found in the live feed to use for test. Using fallback sample data.', 'warning', 4000, 'toast-container');
+        // Fallback to getSampleArticle if feed is empty or has no items
+        liveTestItem = getSampleArticle(); 
+        console.warn('[testEmbed] Live feed empty or no items, falling back to getSampleArticle()');
+      }
+    } catch (err) {
+      console.error('[testEmbed] Error fetching live feed data:', err);
+      showToast(`Error fetching feed data: ${err.message}. Using fallback sample data.`, 'error', 5000, 'toast-container');
+      // Fallback to getSampleArticle on error
+      liveTestItem = getSampleArticle(); 
+      console.warn('[testEmbed] Error fetching live data, falling back to getSampleArticle()');
+    }
+    
+    console.log('[testEmbed] Raw embedSettings from collectEmbedSettings():', JSON.stringify(embedSettings, null, 2));
+
+    const testMessage = {
+      // content: "Testing Discord Embed (with Live Data if available)", // Removed static content
+      embeds: embedSettings.embeds.map((embed, index) => {
+        console.log(`[testEmbed] Processing embed at index ${index} - Original from UI:`, JSON.stringify(embed, null, 2));
+        let processedEmbed = { ...embed }; 
+        const sample = liveTestItem; // USE THE FETCHED LIVE ITEM (or fallback sample)
+
+        // --- Dynamic Interpolation Logic --- 
+        const interpolateString = (str, data) => {
+          if (typeof str !== 'string') return str;
+          let interpolatedStr = str;
+          for (const key in data) {
+            if (data.hasOwnProperty(key)) {
+              const placeholder = `\$\{${key}\}`;
+              // Use a global regex to replace all occurrences of the placeholder
+              interpolatedStr = interpolatedStr.replace(new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), data[key] === null || typeof data[key] === 'undefined' ? '' : data[key]);
+            }
+          }
+          return interpolatedStr;
+        };
+
+        // Apply dynamic interpolation to common embed fields
+        if (processedEmbed.title) processedEmbed.title = interpolateString(processedEmbed.title, sample);
+        if (processedEmbed.description) processedEmbed.description = interpolateString(processedEmbed.description, sample);
+        if (processedEmbed.url) processedEmbed.url = interpolateString(processedEmbed.url, sample);
+        
+        // Footer text interpolation (after it's structured as an object)
+        if (processedEmbed.footer && typeof processedEmbed.footer === 'string') {
+            processedEmbed.footer = { text: processedEmbed.footer };
+        }
+        if (processedEmbed.footer && typeof processedEmbed.footer === 'object' && typeof processedEmbed.footer.text === 'string') {
+            processedEmbed.footer.text = interpolateString(processedEmbed.footer.text, sample);
+        } else if (typeof processedEmbed.footer !== 'undefined') {
+            delete processedEmbed.footer;
+        }
+
+        // Author name interpolation (after it's structured as an object)
+        if (processedEmbed.author && typeof processedEmbed.author === 'string') {
+            processedEmbed.author = { name: processedEmbed.author };
+        }
+        if (processedEmbed.author && typeof processedEmbed.author === 'object' && typeof processedEmbed.author.name === 'string'){
+            processedEmbed.author.name = interpolateString(processedEmbed.author.name, sample);
+        } else if (typeof processedEmbed.author !== 'undefined') {
+            delete processedEmbed.author;
+        }
+        // Future: Interpolate author.url and author.icon_url if you add UI for them and they are in sample data
+
+        if (processedEmbed.thumbnail) processedEmbed.thumbnail = interpolateString(processedEmbed.thumbnail, sample);
+        if (processedEmbed.image) processedEmbed.image = interpolateString(processedEmbed.image, sample);
+        // --- End of Dynamic Interpolation Logic ---
+        
+        // Ensure color is an integer (remains the same)
+        if (processedEmbed.color && typeof processedEmbed.color === 'string') {
+          processedEmbed.color = parseInt(processedEmbed.color.replace('#', ''), 16);
+        } else if (typeof processedEmbed.color !== 'number') {
+          processedEmbed.color = parseInt('5865F2', 16); // Default color
+        }
+
+        // Remove empty strings for optional fields that Discord might reject if empty string vs undefined
+        ['url', 'thumbnail', 'image'].forEach(key => {
+            if (processedEmbed[key] === '') {
+                delete processedEmbed[key];
+            }
+        });
+        
+        console.log(`[testEmbed] Processed embed at index ${index} - After interpolation & cleaning:`, JSON.stringify(processedEmbed, null, 2));
+        return processedEmbed;
+      })
+    };
+    
+    console.log('[testEmbed] Final testMessage.embeds to be sent:', JSON.stringify(testMessage.embeds, null, 2));
+
+    const testData = {
+      title: document.getElementById('edit-feed-title').value || currentFeed.title || 'Test Feed',
+      url: document.getElementById('edit-feed-url').value || currentFeed.url || 'http://example.com/feed.xml',
+      interval: parseInt(document.getElementById('edit-feed-interval').value) || currentFeed.interval || 5,
+      filters: { },
+      fields_to_send: Object.keys(liveTestItem).length > 0 ? Object.keys(liveTestItem) : ['title', 'link'], 
+      embed_settings: { enabled: true, embeds: embedSettings.embeds }, 
+      message: testMessage, 
+      test_item: liveTestItem, // Send the actual item used for the test
+      integrations: [] 
+    };
+
+    const discordPanel = document.getElementById('discord-settings-panel');
+    const discordEnabled = discordPanel.querySelector('.service-enable-toggle').checked;
+
+    if (discordEnabled) {
+      const allEnabledIntegrations = collectIntegrationSettings(); // Get settings for ALL currently enabled integrations
+      const discordSpecificIntegration = allEnabledIntegrations.find(integ => integ.service === 'discord');
+
+      if (discordSpecificIntegration) {
+        if (discordSpecificIntegration.connection_id) {
+          testData.integrations.push({
+            service: 'discord',
+            connection_id: discordSpecificIntegration.connection_id,
+            embed_settings: { enabled: true, embeds: embedSettings.embeds } // Restore
+          });
+        } else if (discordSpecificIntegration.webhook_url) { 
+          testData.integrations.push({
+            ...discordSpecificIntegration, 
+            service: 'discord', 
+            embed_settings: { enabled: true, embeds: embedSettings.embeds } // Restore
+          });
+        } else {
+           showToast('Discord integration is incomplete (missing Webhook or Connection ID). Please check configuration.', 'warning', 5000, 'toast-container');
+           return;
+        }
+      } else {
+        showToast('Discord is enabled, but its configuration is missing or incomplete. Please check configuration.', 'warning', 5000, 'toast-container');
+        return;
+      }
+    } else {
+      showToast('Discord notifications must be enabled to test embeds.', 'info', 4000, 'toast-container');
+      return;
+    }
+    
+    if (testData.integrations.length === 0) {
+        showToast('No active and valid Discord configuration was found to use for the embed test.', 'warning', 5000, 'toast-container');
+        return;
+    }
+
+    console.log('[Modal] Sending test embed with data:', JSON.stringify(testData, null, 2));
+
+    try {
+      const response = await fetch('/api/feeds/send-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(testData)
+      });
+      const result = await response.json();
+      if (result.success) {
+        showToast('Test embed sent successfully to Discord!', 'success', 3000, 'toast-container'); // MODIFIED
+      } else {
+        showToast('Error sending test embed: ' + (result.error || 'Unknown error'), 'error', 5000, 'toast-container'); // MODIFIED
+      }
+    } catch (e) {
+      console.error('Error in testEmbed:', e);
+      showToast('Error: ' + e.message, 'error', 5000, 'toast-container'); // MODIFIED
+    }
+  }

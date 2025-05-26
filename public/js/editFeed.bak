@@ -1,0 +1,354 @@
+// public/js/editFeed.js
+
+let detectedFields = [];
+let detectedSample = {};
+window.selectedFields = [];
+window.editSelectedConnections = [];
+
+// Helper for variable interpolation in templates
+function interpolate(template, item) {
+  if (!template) return '';
+  return template.replace(/\$\{(\w+)\}/g, (_, key) => item[key] || '');
+}
+
+// Dynamically render available connections as buttons
+function renderEditAvailableConnections() {
+  const availableList = document.getElementById('editAvailableConnections');
+  if (!availableList) return;
+  availableList.innerHTML = '';
+  (window.allConnections || []).forEach(conn => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn btn-outline-primary btn-sm me-1 mb-1';
+    btn.setAttribute('data-id', conn.id);
+    btn.textContent = `${conn.label} (${conn.service})`;
+    btn.onclick = () => {
+      if (!window.editSelectedConnections.includes(conn.id)) {
+        window.editSelectedConnections.push(conn.id);
+        updateEditSelectedUI();
+      }
+    };
+    availableList.appendChild(btn);
+  });
+}
+
+// Update UI for selected connections
+function updateEditSelectedUI() {
+  const selectedContainer = document.getElementById('editSelectedConnections');
+  const hiddenInput = document.getElementById('edit-connection_ids');
+  if (!selectedContainer || !hiddenInput) return;
+  if (window.editSelectedConnections.length === 0) {
+    selectedContainer.innerHTML = '<small class="text-muted">No connections selected</small>';
+  } else {
+    selectedContainer.innerHTML = '';
+    window.editSelectedConnections.forEach(id => {
+      const conn = (window.allConnections || []).find(c => c.id === id);
+      if (conn) {
+        const li = document.createElement('div');
+        li.className = 'badge bg-primary me-1 mb-1 d-inline-flex align-items-center';
+        li.textContent = `${conn.label} (${conn.service})`;
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'btn-close btn-close-white btn-sm ms-2';
+        removeBtn.setAttribute('aria-label', 'Remove');
+        removeBtn.onclick = () => {
+          window.editSelectedConnections = window.editSelectedConnections.filter(cid => cid !== id);
+          updateEditSelectedUI();
+        };
+        li.appendChild(removeBtn);
+        selectedContainer.appendChild(li);
+      }
+    });
+  }
+  hiddenInput.value = JSON.stringify(window.editSelectedConnections);
+}
+
+// Populate Edit Feed modal
+window.editFeed = function(id) {
+  fetch(`/api/feeds/${id}`)
+    .then(res => res.json())
+    .then(feed => {
+      document.getElementById('edit-feed-id').value = feed.id;
+      document.getElementById('edit-feed-url').value = feed.url;
+      document.getElementById('edit-feed-title').value = feed.title;
+      document.getElementById('edit-scan-interval').value = feed.interval;
+      document.getElementById('edit-filters').value = feed.filters || '';
+
+      // Parse connection_ids
+      let idsRaw = feed.connection_ids;
+      if (typeof idsRaw === "string") {
+        try { idsRaw = JSON.parse(idsRaw); } catch { idsRaw = []; }
+      }
+      if (!Array.isArray(idsRaw)) idsRaw = [];
+      window.editSelectedConnections = idsRaw
+        .map(id => Number(id))
+        .filter(id => Number.isFinite(id) && id > 0);
+
+      renderEditAvailableConnections();
+      updateEditSelectedUI();
+
+      // Restore field selection
+      window.selectedFields = Array.isArray(feed.fields_to_send) ? feed.fields_to_send.slice() : [];
+      detectedFields = [];
+      detectedSample = {};
+      if (feed.url) {
+        fetch('/api/feeds/detect-fields', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: feed.url })
+        })
+        .then(res => res.json())
+        .then(result => {
+          detectedFields = result.fields || [];
+          detectedSample = result.sample || {};
+          window.detectedSample = detectedSample;
+          if (window.selectedFields.length) {
+            window.selectedFields = window.selectedFields.filter(f => detectedFields.includes(f));
+          } else {
+            window.selectedFields = detectedFields.slice();
+          }
+          renderFieldCheckboxes();
+          updateNotificationPreview();
+          renderEmbedPreview(); // Update embed preview with new sample
+        });
+      } else {
+        renderFieldCheckboxes();
+        updateNotificationPreview();
+        renderEmbedPreview();
+      }
+
+      // Load Discord Embed settings
+      let embed = {};
+      if (feed.embed_settings) {
+        if (typeof feed.embed_settings === "string") {
+          try { embed = JSON.parse(feed.embed_settings); } catch { embed = {}; }
+        } else {
+          embed = feed.embed_settings;
+        }
+      }
+      document.getElementById('embed-enabled').checked = !!embed.enabled;
+      document.getElementById('embed-title').value = embed.title || '';
+      document.getElementById('embed-description').value = embed.description || '';
+      document.getElementById('embed-color').value = embed.color || '#5865F2';
+      document.getElementById('embed-footer').value = embed.footer || '';
+      if (document.getElementById('embed-preview')) renderEmbedPreview();
+
+      // Show modal
+      const modalEl = document.getElementById('editFeedModal');
+      const modal = new bootstrap.Modal(modalEl);
+      modal.show();
+
+      // Attach Send Test handler
+      const sendTestBtn = document.getElementById('sendTestEditFeedBtn');
+      if (sendTestBtn) {
+        sendTestBtn.onclick = async () => {
+          const url = document.getElementById('edit-feed-url').value;
+          const title = document.getElementById('edit-feed-title').value;
+          const interval = document.getElementById('edit-scan-interval').value;
+          const filters = document.getElementById('edit-filters').value;
+          const connection_ids = Array.isArray(window.editSelectedConnections)
+            ? window.editSelectedConnections
+                .map(id => Number(id))
+                .filter(id => Number.isFinite(id) && id > 0)
+            : [];
+          if (!connection_ids.length) {
+            showToast('Please select at least one integration/channel.');
+            return;
+          }
+          const fields_to_send = window.selectedFields || [];
+          const test_item = {};
+          (fields_to_send || []).forEach(field => {
+            if (detectedSample && Object.prototype.hasOwnProperty.call(detectedSample, field)) {
+              test_item[field] = detectedSample[field];
+            }
+          });
+
+          const embed_settings = collectEmbedSettings();
+
+          try {
+            const resp = await fetch('/api/feeds/send-test', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url, title, interval, filters, connection_ids, fields_to_send, test_item, embed_settings })
+            });
+            const result = await resp.json();
+            if (result.success) {
+              showToast('Test sent successfully');
+            } else {
+              showToast('Failed to send test: ' + (result.error || 'Unknown error'));
+            }
+          } catch (e) {
+            showToast('Error sending test: ' + e.message);
+          }
+        };
+      }
+
+      // Attach Test Feed handler
+      const testBtn = document.getElementById('testEditFeedBtn');
+      if (testBtn) {
+        testBtn.onclick = async () => {
+          const url = document.getElementById('edit-feed-url').value;
+          if (!url) return showToast('Please enter a URL');
+          try {
+            const response = await fetch('/api/feeds/test', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url })
+            });
+            const result = await response.json();
+            showToast(result.valid ? 'Valid RSS feed!' : 'Invalid RSS feed');
+          } catch (error) {
+            showToast('Error testing feed');
+          }
+        };
+      }
+
+      // Attach Detect Fields handler
+      const detectBtn = document.getElementById('detectFieldsBtn');
+      if (detectBtn) {
+        detectBtn.onclick = async () => {
+          const url = document.getElementById('edit-feed-url').value;
+          if (!url) return showToast('Enter a feed URL first!');
+          const resp = await fetch('/api/feeds/detect-fields', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url })
+          });
+          const result = await resp.json();
+          detectedFields = result.fields || [];
+          detectedSample = result.sample || {};
+          window.detectedSample = detectedSample;
+          window.selectedFields = detectedFields.slice();
+          renderFieldCheckboxes();
+          updateNotificationPreview();
+          renderEmbedPreview();
+        };
+      }
+    });
+};
+
+document.getElementById('editFeedForm')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const data = Object.fromEntries(formData.entries());
+  data.connection_ids = window.editSelectedConnections;
+  data.fields_to_send = window.selectedFields;
+  data.embed_settings = collectEmbedSettings();
+  try {
+    await fetch(`/api/feeds/${data.feed_id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    window.location.reload();
+  } catch (error) {
+    showToast('Error saving feed');
+  }
+});
+
+function renderFieldCheckboxes() {
+  const container = document.getElementById('fieldCheckboxes');
+  if (!detectedFields || !detectedFields.length) {
+    container.innerHTML = '<small class="text-muted">No fields detected yet.</small>';
+    return;
+  }
+  container.innerHTML = '';
+  detectedFields.forEach(field => {
+    const id = 'field_' + field;
+    const div = document.createElement('div');
+    div.className = 'form-check form-check-inline';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.className = 'form-check-input';
+    input.id = id;
+    input.value = field;
+    input.checked = window.selectedFields.includes(field);
+    input.onchange = () => {
+      if (input.checked) {
+        window.selectedFields.push(field);
+      } else {
+        window.selectedFields = window.selectedFields.filter(f => f !== field);
+      }
+      updateNotificationPreview();
+    };
+    const label = document.createElement('label');
+    label.className = 'form-check-label';
+    label.htmlFor = id;
+    label.textContent = field;
+    div.appendChild(input);
+    div.appendChild(label);
+    container.appendChild(div);
+  });
+}
+
+function updateNotificationPreview() {
+  const sample = detectedSample || {};
+  let html = '';
+  if (!detectedFields || !detectedFields.length) {
+    html = '<span class="text-muted">No fields detected yet.</span>';
+  } else if (!window.selectedFields || window.selectedFields.length === 0) {
+    html = '<span class="text-muted">No fields selected.</span>';
+  } else {
+    html = window.selectedFields.map(f => {
+      let val = sample[f] || `[${f}]`;
+      if (f === 'link' && val) val = `<a href="${val}" target="_blank" rel="noopener noreferrer">${val}</a>`;
+      return `<div><b>${f}:</b> ${val}</div>`;
+    }).join('');
+  }
+  document.getElementById('notificationPreview').innerHTML = html;
+}
+
+// Discord Embed Live Preview & Collect
+function renderEmbedPreview() {
+  const enabled = document.getElementById('embed-enabled').checked;
+  const titleRaw = document.getElementById('embed-title').value || '';
+  const descRaw = document.getElementById('embed-description').value || '';
+  const color = document.getElementById('embed-color').value || '#5865F2';
+  const footerRaw = document.getElementById('embed-footer').value || '';
+  const preview = document.getElementById('embed-preview');
+  const sample = window.detectedSample || {};
+
+  const title = interpolate(titleRaw, sample);
+  const desc = interpolate(descRaw, sample);
+  const footer = interpolate(footerRaw, sample);
+
+  if (!enabled) {
+    preview.innerHTML = '<span style="color:#b9bbbe;">(Embed disabled)</span>';
+    return;
+  }
+  preview.innerHTML = `
+    <div style="border-left:4px solid ${color};background:#36393f;padding:12px 16px;border-radius:6px;">
+      <div style="color:${color};font-weight:600;font-size:1.1em;margin-bottom:4px;">${title || '<span style="color:#b9bbbe;">(no title)</span>'}</div>
+      <div style="color:#dcddde;margin-bottom:8px;">${desc || '<span style="color:#72767d;">(no description)</span>'}</div>
+      <div style="color:#b9bbbe;font-size:0.9em;">${footer}</div>
+    </div>
+  `;
+}
+
+function collectEmbedSettings() {
+  return {
+    enabled: document.getElementById('embed-enabled').checked,
+    title: document.getElementById('embed-title').value,
+    description: document.getElementById('embed-description').value,
+    color: document.getElementById('embed-color').value,
+    footer: document.getElementById('embed-footer').value
+  };
+}
+
+['embed-enabled','embed-title','embed-description','embed-color','embed-footer'].forEach(id => {
+  document.getElementById(id)?.addEventListener('input', renderEmbedPreview);
+  document.getElementById(id)?.addEventListener('change', renderEmbedPreview);
+});
+
+if (document.getElementById('embed-preview')) renderEmbedPreview();
+
+// Toast helper
+function showToast(message) {
+  const toastEl = document.getElementById('liveToast');
+  const toastBody = document.getElementById('toastBody');
+  if (toastBody) toastBody.textContent = message;
+  if (toastEl) {
+    const toast = new bootstrap.Toast(toastEl);
+    toast.show();
+  }
+}

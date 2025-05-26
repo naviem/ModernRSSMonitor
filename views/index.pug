@@ -1,0 +1,415 @@
+extends layout
+
+block content
+  div(class="space-y-8")
+    // Header
+    div(class="flex items-center justify-between")
+      div
+        h1(class="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent") RSS Monitor
+        p(class="mt-2 text-base-content/70") Monitor your favorite RSS feeds and get Discord notifications
+      
+      button(class="btn btn-primary gap-2" onclick="document.getElementById('add-feed-modal').showModal()")
+        svg(xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor")
+          path(stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4")
+        | Add Feed
+    
+    // Feed List Container - will be populated dynamically
+    div(class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="feeds-container")
+      // Loading state
+      div(class="col-span-full text-center py-12")
+        div(class="loading loading-spinner loading-lg mb-4")
+        p(class="text-base-content/70") Loading feeds...
+
+    // Add Feed Modal
+    dialog(class="modal" id="add-feed-modal")
+      div(class="modal-box")
+        div(class="flex items-center justify-between mb-6")
+          h3(class="font-bold text-2xl") Add New Feed
+          button(class="btn btn-circle btn-ghost" onclick="document.getElementById('add-feed-modal').close()")
+            svg(xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor")
+              path(stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12")
+        
+        form(class="space-y-4" id="add-feed-form")
+          div(class="form-control")
+            label(class="label font-medium") Feed Title
+            input(class="input input-bordered w-full" type="text" name="title" required)
+          
+          div(class="form-control")
+            label(class="label font-medium") Feed URL
+            input(class="input input-bordered w-full font-mono text-sm" type="url" name="url" required)
+          
+          div(class="form-control")
+            label(class="label font-medium") Scan Interval
+            div(class="join w-full")
+              input#add-scan-interval(class="join-item input input-bordered w-24" type="number" name="interval" value="5" min="1" required)
+              span(class="join-item btn btn-neutral") Minutes
+          
+          div(class="modal-action")
+            button(class="btn" type="button" onclick="document.getElementById('add-feed-modal').close()") Cancel
+            button(class="btn btn-primary" type="submit") Add Feed
+
+    // Edit Feed Modal
+    include _edit-feed-modal
+
+    // Toast Container
+    div(class="toast toast-end z-50" id="toast")
+
+block scripts
+  script.
+    // Debug function
+    function debug(msg, data) {
+      const timestamp = new Date().toISOString();
+      console.log(`[${timestamp}] [DEBUG] ${msg}:`, data);
+    }
+
+    // Set default interval on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      const defaultInterval = localStorage.getItem('defaultScanInterval');
+      if (defaultInterval) {
+        document.getElementById('add-scan-interval').value = defaultInterval;
+      }
+    });
+
+    document.getElementById('add-feed-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const data = Object.fromEntries(formData.entries());
+      
+      // Add loading state
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      const originalText = submitBtn.textContent;
+      submitBtn.textContent = 'Adding...';
+      submitBtn.disabled = true;
+      
+      try {
+        const response = await fetch('/api/feeds', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) throw new Error('Failed to add feed');
+        const result = await response.json();
+        
+        document.getElementById('add-feed-modal').close();
+        showToast('Feed added successfully', 'success');
+        
+        // Reset form
+        e.target.reset();
+        
+        // Reload the feeds list without page refresh
+        await loadFeeds();
+        
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+      }
+    });
+
+    async function toggleFeed(id) {
+      try {
+        const response = await fetch(`/api/feeds/${id}/toggle`, { method: 'POST' });
+        if (!response.ok) throw new Error('Failed to toggle feed');
+        const result = await response.json();
+        showToast('Feed status updated', 'success');
+        
+        // Update the specific feed element without full reload
+        await updateFeedElement(id, result);
+        
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function deleteFeed(id) {
+      if (!confirm('Are you sure you want to delete this feed?')) return;
+      
+      try {
+        const response = await fetch(`/api/feeds/${id}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error('Failed to delete feed');
+        showToast('Feed deleted successfully', 'success');
+        
+        // Remove feed element with animation
+        const feedElement = document.querySelector(`[data-feed-id="${id}"]`);
+        if (feedElement) {
+          feedElement.style.opacity = '0.5';
+          feedElement.style.transform = 'scale(0.95)';
+          setTimeout(() => {
+            feedElement.remove();
+            // Check if no feeds left and show empty state
+            if (document.querySelectorAll('[data-feed-id]').length === 0) {
+              loadFeeds(); // This will show the empty state
+            }
+          }, 300);
+        }
+        
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function loadFeeds() {
+      try {
+        const response = await fetch('/api/feeds');
+        if (!response.ok) throw new Error('Failed to load feeds');
+        const feeds = await response.json();
+        
+        renderFeeds(feeds);
+      } catch (err) {
+        console.error('Error loading feeds:', err);
+        showToast('Failed to load feeds', 'error');
+      }
+    }
+
+    function renderFeeds(feeds) {
+      const container = document.getElementById('feeds-container');
+      if (!container) return;
+      
+      if (feeds.length === 0) {
+        container.innerHTML = `
+          <div class="col-span-full text-center py-12">
+            <div class="text-base-content/70 mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+              </svg>
+              <h3 class="text-lg font-medium">No feeds yet</h3>
+              <p>Add your first RSS feed to get started</p>
+            </div>
+            <button class="btn btn-primary" onclick="document.getElementById('add-feed-modal').showModal()">
+              Add Your First Feed
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      // Render feeds with proper data attributes for updates
+      container.innerHTML = feeds.map(feed => `
+        <div class="card bg-base-200 shadow-xl hover:shadow-2xl transition-shadow duration-300" data-feed-id="${feed.id}">
+          <div class="card-body">
+            <div class="flex items-start justify-between">
+              <h2 class="card-title">${feed.title}</h2>
+              <div class="dropdown dropdown-end">
+                <label tabindex="0" class="btn btn-ghost btn-sm btn-circle">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
+                  </svg>
+                </label>
+                <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow-lg bg-base-100 rounded-box w-52">
+                  <li>
+                    <a onclick="editFeed('${feed.id}')">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                      </svg>
+                      Edit
+                    </a>
+                  </li>
+                  <li>
+                    <a onclick="toggleFeed('${feed.id}')">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        ${feed.paused ? 
+                          '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>' :
+                          '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/>'
+                        }
+                      </svg>
+                      ${feed.paused ? 'Resume' : 'Pause'}
+                    </a>
+                  </li>
+                  <li>
+                    <a onclick="deleteFeed('${feed.id}')" class="text-error">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                      </svg>
+                      Delete
+                    </a>
+                  </li>
+                </ul>
+              </div>
+            </div>
+            
+            <p class="text-sm text-base-content/70 mt-2 font-mono break-all">${feed.url}</p>
+            
+            <div class="flex flex-wrap gap-2 mt-4">
+              <div class="badge badge-neutral gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                ${feed.interval}m
+              </div>
+              
+              ${feed.paused ? 
+                '<div class="badge badge-warning gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Paused</div>' :
+                '<div class="badge badge-success gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/></svg>Active</div>'
+              }
+              
+              ${(() => {
+                let integrations = feed.integrations;
+                // Handle case where integrations might be a string or already parsed
+                if (typeof integrations === 'string') {
+                  try {
+                    integrations = JSON.parse(integrations);
+                  } catch (e) {
+                    integrations = [];
+                  }
+                }
+                integrations = integrations || [];
+                
+                return integrations.length > 0 ?
+                  '<div class="badge badge-primary gap-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>Integrated</div>' :
+                  '';
+              })()}
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function editFeed(id) {
+      // Call the editFeed function from the edit feed modal
+      if (typeof window.showEditFeedModal === 'function') {
+        window.showEditFeedModal(id);
+      } else {
+        // Fallback to show modal if edit function not loaded yet
+        const modal = document.getElementById('edit-feed-modal');
+        if (modal) {
+          modal.showModal();
+          // Try to load the feed data manually
+          loadFeedForEdit(id);
+        }
+      }
+    }
+
+    async function loadFeedForEdit(id) {
+      try {
+        const response = await fetch(`/api/feeds/${id}`);
+        if (!response.ok) throw new Error('Failed to load feed');
+        const feed = await response.json();
+        
+        // Populate basic feed info if form exists
+        const form = document.getElementById('edit-feed-form');
+        if (form) {
+          const idField = document.getElementById('edit-feed-id');
+          const titleField = document.getElementById('edit-feed-title');
+          const urlField = document.getElementById('edit-feed-url');
+          const intervalField = document.getElementById('edit-feed-interval');
+          
+          if (idField) idField.value = id;
+          if (titleField) titleField.value = feed.title || '';
+          if (urlField) urlField.value = feed.url || '';
+          if (intervalField) intervalField.value = feed.interval || 5;
+        }
+      } catch (err) {
+        console.error('Error loading feed for edit:', err);
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function updateFeedElement(id, result) {
+      const feedElement = document.querySelector(`[data-feed-id="${id}"]`);
+      if (!feedElement) return;
+      
+      const badge = feedElement.querySelector('.badge');
+      const dropdownToggle = feedElement.querySelector('.dropdown-content a[onclick*="toggleFeed"]');
+      
+      if (badge) {
+        badge.className = `badge ${result.paused ? 'badge-warning' : 'badge-success'}`;
+        badge.textContent = result.paused ? 'Paused' : 'Active';
+      }
+      
+      if (dropdownToggle) {
+        dropdownToggle.textContent = result.paused ? 'Resume' : 'Pause';
+      }
+    }
+
+    // Enhanced real-time socket.io implementation
+    let socket = null;
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 5;
+
+    function initializeSocket() {
+      if (typeof io === 'undefined') {
+        console.error('Socket.io not loaded');
+        return;
+      }
+
+      socket = io();
+      // Pass the socket instance to the modal script
+      if (typeof window.setModalSocketReference === 'function') {
+        window.setModalSocketReference(socket);
+        console.log('[INDEX.PUG] Called window.setModalSocketReference.');
+      } else {
+        console.warn('[INDEX.PUG] window.setModalSocketReference is not defined. Modal may not have socket access.');
+      }
+      
+      socket.on('connect', () => {
+        console.log('🟢 Connected to server via socket.io');
+        reconnectAttempts = 0;
+        showToast('Connected to server', 'success');
+      });
+
+      socket.on('feed-update', () => {
+        console.log('📡 Received feed-update event from server');
+        loadFeeds();
+        showToast('Feeds updated', 'info');
+      });
+
+      socket.on('disconnect', (reason) => {
+        console.log('🔴 Disconnected from server:', reason);
+        showToast('Connection lost', 'warning');
+      });
+
+      socket.on('connect_error', (error) => {
+        console.error('❌ Socket connection error:', error);
+        reconnectAttempts++;
+        if (reconnectAttempts < maxReconnectAttempts) {
+          setTimeout(() => {
+            console.log(`🔄 Attempting to reconnect (${reconnectAttempts}/${maxReconnectAttempts})`);
+            socket.connect();
+          }, 2000 * reconnectAttempts);
+        } else {
+          showToast('Connection failed - please refresh page', 'error');
+        }
+      });
+
+      socket.on('integration-update', () => {
+        console.log('🔧 Integration configuration updated');
+        // Refresh the connections data for the edit modal
+        loadConnections();
+      });
+
+      console.log('🚀 Socket.io initialized');
+    }
+
+    async function loadConnections() {
+      try {
+        const response = await fetch('/api/integrations');
+        if (response.ok) {
+          const connections = await response.json();
+          // Update global connections for edit modal
+          window.connections = connections;
+        }
+      } catch (err) {
+        console.error('Failed to load connections:', err);
+      }
+    }
+
+    // Load feeds on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('🎯 DOM loaded, initializing application');
+      loadFeeds();
+      initializeSocket();
+      loadConnections();
+    });
+
+    function showToast(message, type = 'info') {
+      const toast = document.getElementById('toast');
+      const bgColor = type === 'error' ? 'alert-error' : type === 'success' ? 'alert-success' : type === 'warning' ? 'alert-warning' : 'alert-info';
+      toast.innerHTML = `
+        <div class="alert ${bgColor} shadow-lg">
+          <span class="text-content">${message}</span>
+        </div>
+      `;
+      setTimeout(() => toast.innerHTML = '', 3000);
+    }

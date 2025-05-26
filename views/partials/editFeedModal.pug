@@ -1,0 +1,182 @@
+#editFeedModal.modal.fade(tabindex="-1")
+  .modal-dialog
+    .modal-content
+      .modal-header.custom-dark
+        h5.modal-title.text-white Edit Feed
+        button.btn-close(type="button" data-bs-dismiss="modal")
+      .modal-body
+        form#editFeedForm
+          ul.nav.nav-tabs.mb-3#editFeedTabs(role="tablist")
+            li.nav-item(role="presentation")
+              a.nav-link.active(
+                id="edit-main-tab"
+                data-bs-toggle="tab"
+                href="#edit-main"
+                role="tab"
+                aria-controls="edit-main"
+                aria-selected="true"
+              ) Feed Settings
+            li.nav-item(role="presentation")
+              a.nav-link(
+                id="edit-embed-tab"
+                data-bs-toggle="tab"
+                href="#edit-embed"
+                role="tab"
+                aria-controls="edit-embed"
+                aria-selected="false"
+              ) Discord Embed
+          .tab-content.mb-4
+            .tab-pane.fade.show.active#edit-main(role="tabpanel" aria-labelledby="edit-main-tab")
+              input(type="hidden" id="edit-feed-id" name="feed_id")
+              .mb-3
+                label.form-label(for="edit-feed-url") Feed URL
+                .input-group
+                  input#edit-feed-url.form-control(type="text" name="url" required)
+                  button.btn.btn-outline-secondary(type="button" id="testEditFeedBtn" tabindex="-1")
+                    i.bi.bi-link-45deg.me-1
+                    | Test Feed
+              .mb-3
+                label.form-label(for="edit-feed-title") Feed Title
+                input#edit-feed-title.form-control(type="text" name="title" required)
+              .mb-3
+                label.form-label(for="edit-scan-interval") Scan Interval (minutes)
+                input#edit-scan-interval.form-control(type="number" name="interval" min="1" max="1440" required)
+              .mb-3
+                label.form-label(for="edit-filters") Filters (optional)
+                input#edit-filters.form-control(type="text" name="filters")
+              .mb-3
+                label.form-label Connections
+                #editAvailableConnections
+                label.form-label.mt-2 Selected Connections
+                #editSelectedConnections
+                input(type="hidden" id="edit-connection_ids" name="connection_ids")
+              .mb-3
+                label.form-label Select Fields to Send
+                #fieldCheckboxes
+                small.text-muted Enter a feed URL and click "Detect Fields" to see available fields.
+                button.btn.btn-sm.btn-outline-secondary.mt-2(type="button" id="detectFieldsBtn") Detect Fields
+              .mb-3
+                label.form-label Preview
+                #notificationPreview.bg-light.p-3.rounded.border(style="min-height:60px;")
+                  | (Preview will update as you edit fields)
+            .tab-pane.fade#edit-embed(role="tabpanel" aria-labelledby="edit-embed-tab")
+              .card.mb-3
+                .card-body
+                  .form-check.form-switch.mb-3
+                    input#embed-enabled.form-check-input(type="checkbox" name="embed_enabled" role="switch")
+                    label.form-check-label(for="embed-enabled") Enable Discord Rich Embed
+                  
+                  #embed-settings.mt-3
+                    #embed-list
+                      //- Embeds will be dynamically added here
+                    
+                    button#add-embed-btn.btn.btn-outline-primary.mt-3.w-100(type="button")
+                      i.bi.bi-plus-circle.me-2
+                      | Add Embed
+              
+              .card.mb-3
+                .card-header.d-flex.align-items-center.justify-content-between
+                  div
+                    i.bi.bi-discord.me-2
+                    | Live Preview
+                  small.text-muted (as shown in Discord)
+                .card-body.p-3(style="background:#f8f9fa;border-radius:0 0 0.375rem 0.375rem;")
+                  #embed-preview.p-3(style="background:#313338;border-radius:4px;")
+                    //- JS will fill this
+              
+              .alert.alert-info.mt-3
+                h6.mb-2
+                  i.bi.bi-info-circle.me-1
+                  | Available Variables
+                p.mb-1 You can use these variables in your embeds:
+                .row
+                  .col-md-6
+                    ul.list-unstyled.mb-0
+                      li
+                        code ${title}
+                        small.text-muted.ms-2 Article title
+                      li
+                        code ${description}
+                        small.text-muted.ms-2 Short description
+                      li
+                        code ${content}
+                        small.text-muted.ms-2 Full content
+                  .col-md-6
+                    ul.list-unstyled.mb-0
+                      li
+                        code ${link}
+                        small.text-muted.ms-2 Article URL
+                      li
+                        code ${pubDate}
+                        small.text-muted.ms-2 Publication date
+                      li
+                        code ${author}
+                        small.text-muted.ms-2 Author name
+          
+          .modal-footer.border-top.pt-3
+            button.btn.btn-outline-secondary(type="button" data-bs-dismiss="modal") Cancel
+            .d-flex.gap-2
+              button.btn.btn-info(type="button" id="sendTestEditFeedBtn")
+                i.bi.bi-send.me-1
+                | Send Test
+              button.btn.btn-primary(type="submit") Save Changes
+
+template#embed-template
+  .embed-item.card.mb-3
+    .card-header.bg-light.d-flex.justify-content-between.align-items-center
+      span Embed
+      .btn-group
+        button.btn.btn-sm.btn-outline-secondary.move-up-btn(type="button" title="Move Up")
+          i.bi.bi-arrow-up
+        button.btn.btn-sm.btn-outline-secondary.move-down-btn(type="button" title="Move Down")
+          i.bi.bi-arrow-down
+        button.btn.btn-sm.btn-outline-danger.remove-embed-btn(type="button" title="Remove")
+          i.bi.bi-trash
+    .card-body
+      .row.mb-3
+        .col-md-8
+          label.form-label
+            i.bi.bi-type-h1.me-1
+            | Title
+            small.text-muted.ms-2 The main heading of your embed
+          .input-group
+            span.input-group-text
+              i.bi.bi-braces
+            input.embed-title.form-control(
+              type="text"
+              placeholder="e.g. New Post: ${title}"
+            )
+        .col-md-4
+          label.form-label
+            i.bi.bi-palette.me-1
+            | Color
+          input.embed-color.form-control(
+            type="color"
+            value="#5865F2"
+          )
+      
+      .mb-3
+        label.form-label
+          i.bi.bi-text-paragraph.me-1
+          | Description
+          small.text-muted.ms-2 The main content of your embed
+        .input-group
+          span.input-group-text
+            i.bi.bi-braces
+          textarea.embed-description.form-control(
+            rows="3"
+            placeholder="e.g. ${description}\n\nRead more: ${link}"
+          )
+      
+      .mb-3
+        label.form-label
+          i.bi.bi-chat-square-text.me-1
+          | Footer
+          small.text-muted.ms-2 Optional text at the bottom of the embed
+        .input-group
+          span.input-group-text
+            i.bi.bi-braces
+          input.embed-footer.form-control(
+            type="text"
+            placeholder="e.g. Posted on ${pubDate}"
+          )
